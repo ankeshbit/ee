@@ -1,0 +1,53 @@
+# MATLAB generated files
+*.asv
+*.autosave
+*.m~
+*.mex*
+*.pcode
+*.prj.user
+*.mlproj
+*.slxc
+*.sldd.bak
+
+# MATLAB and Simulink caches/logs
+slprj/
+simulink_cache/
+*.m~*
+*.log
+*.mexw32
+*.mexw64
+*.mexmaci64
+*.mexmaca64
+*.mexglx
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/*
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# Generated results; keep directory placeholders under version control
+results/plots/*
+!results/plots/.gitkeep
+results/reports/*
+!results/reports/.gitkeep
+
+# MATLAB test and coverage outputs
+coverage/
+test-results/
+*.xml
+
+# Temporary archives and generated exports
+*.bak
+*.tmp
+*.zip
+*.tar
+*.fig
+*.png
+*.jpg
+*.jpeg
+*.pdf
