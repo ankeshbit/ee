@@ -1,0 +1,244 @@
+POWER SYSTEM SIMULATOR - PROJECT AUDIT
+=====================================
+
+
+========== GIT STATUS ==========
+On branch main
+Your branch is ahead of 'origin/main' by 5 commits.
+  (use "git push" to publish your local commits)
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	project_audit.txt
+
+nothing added to commit but untracked files present (use "git add" to track)
+
+
+========== RECENT COMMITS ==========
+0c1920b Add double-line-to-ground fault analysis and tests
+2a9504b Add single-line-to-ground fault analysis and tests
+ecf36c0 Add symmetrical sequence component analysis and tests
+d99995b Add three-phase fault analysis and unit tests
+970415c Add per-unit base calculations and unit tests
+
+
+========== DIRECTORY: matlab/protection ==========
+.gitkeep
+
+========== DIRECTORY: tests/unit ==========
+.gitkeep
+TestCalculateBaseValues.m
+TestCalculateDLGFault.m
+TestCalculateSLGFault.m
+TestCalculateSequenceComponents.m
+TestCalculateThreePhaseFault.m
+
+
+========== FILE: matlab/network/calculateSequenceComponents.m ==========
+
+function seq = calculateSequenceComponents(phasePhasors)
+% calculateSequenceComponents Convert phase phasors to sequence components.
+% Input:
+%   phasePhasors - [Va; Vb; Vc], complex phase-to-neutral phasors.
+% Output:
+%   seq.V0 - zero-sequence component
+%   seq.V1 - positive-sequence component
+%   seq.V2 - negative-sequence component
+
+validateattributes(phasePhasors, {'numeric'}, ...
+    {'vector', 'numel', 3, 'finite'});
+
+phasePhasors = phasePhasors(:);
+
+a = exp(1i * 2*pi/3);
+
+T = (1/3) * [ ...
+    1,   1,   1;
+    1,   a,   a^2;
+    1,   a^2, a];
+
+components = T * phasePhasors;
+
+seq.V0 = components(1);
+seq.V1 = components(2);
+seq.V2 = components(3);
+end
+
+
+
+========== FILE: matlab/faults/calculateThreePhaseFault.m ==========
+function If_pu = calculateThreePhaseFault(Vth_pu, Z1th_pu, Zf_pu)
+% calculateThreePhaseFault Calculate balanced three-phase fault current.
+% All inputs and the output are in per-unit.
+% Vth_pu: Prefault Thevenin voltage in per-unit.
+% Z1th_pu: Positive-sequence Thevenin impedance in per-unit.
+% Zf_pu: Fault impedance in per-unit.
+
+    validateattributes(Vth_pu, {'numeric'}, ...
+        {'scalar','finite'});
+    validateattributes(Z1th_pu, {'numeric'}, ...
+        {'scalar','finite'});
+    validateattributes(Zf_pu, {'numeric'}, ...
+        {'scalar','finite'});
+
+    Ztotal = Z1th_pu + Zf_pu;
+
+    if abs(Ztotal) < eps
+        error('calculateThreePhaseFault:ZeroImpedance', ...
+            'Total fault-path impedance must be nonzero.');
+    end
+
+    If_pu = Vth_pu / Ztotal;
+end
+
+
+
+========== FILE: matlab/faults/calculateSLGFault.m ==========
+
+function fault = calculateSLGFault(Vth_pu, Z1_pu, Z2_pu, Z0_pu, Zf_pu)
+% calculateSLGFault Calculate a phase-A single-line-to-ground fault.
+% All inputs and outputs are in per-unit.
+%
+% Vth_pu: Prefault positive-sequence Thevenin voltage.
+% Z1_pu: Positive-sequence Thevenin impedance.
+% Z2_pu: Negative-sequence Thevenin impedance.
+% Z0_pu: Zero-sequence Thevenin impedance.
+% Zf_pu: Phase-A-to-ground fault impedance.
+%
+% Output fields:
+%   I0_pu, I1_pu, I2_pu: Sequence currents.
+%   Ia_pu, Ib_pu, Ic_pu: Phase currents.
+
+validateattributes(Vth_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+validateattributes(Z1_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+validateattributes(Z2_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+validateattributes(Z0_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+validateattributes(Zf_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+
+Ztotal = Z1_pu + Z2_pu + Z0_pu + 3*Zf_pu;
+
+if abs(Ztotal) < eps
+    error('calculateSLGFault:ZeroImpedance', ...
+        'Total sequence-network impedance must be nonzero.');
+end
+
+Iseq = Vth_pu / Ztotal;
+
+fault.I0_pu = Iseq;
+fault.I1_pu = Iseq;
+fault.I2_pu = Iseq;
+
+% Convert sequence currents to phase currents.
+a = exp(1i * 2*pi/3);
+
+Tinv = [ ...
+    1, 1, 1;
+    1, a^2, a;
+    1, a, a^2];
+
+Iphase = Tinv * [Iseq; Iseq; Iseq];
+
+fault.Ia_pu = Iphase(1);
+fault.Ib_pu = Iphase(2);
+fault.Ic_pu = Iphase(3);
+end
+
+
+
+========== FILE: matlab/faults/calculateLLFault.m ==========
+FILE NOT FOUND
+
+
+========== FILE: matlab/faults/calculateDLGFault.m ==========
+
+function fault = calculateDLGFault(Vth_pu, Z1_pu, Z2_pu, Z0_pu, Zf_pu)
+% calculateDLGFault Calculate a phase-B/C double-line-to-ground fault.
+% All inputs and outputs are in per-unit.
+%
+% Zf_pu is the impedance from each faulted phase to ground.
+%
+% Output fields:
+%   I0_pu, I1_pu, I2_pu: Sequence currents.
+%   Ia_pu, Ib_pu, Ic_pu: Phase currents.
+
+validateattributes(Vth_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+validateattributes(Z1_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+validateattributes(Z2_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+validateattributes(Z0_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+validateattributes(Zf_pu, {'numeric'}, ...
+    {'scalar', 'finite'});
+
+Zg = Z0_pu + 3*Zf_pu;
+Zden = Z2_pu + Zg;
+
+if abs(Zden) < eps
+    error('calculateDLGFault:ZeroImpedance', ...
+        'Negative- and zero-sequence parallel impedance denominator must be nonzero.');
+end
+
+Z20 = Z2_pu * Zg / Zden;
+Ztotal = Z1_pu + Z20;
+
+if abs(Ztotal) < eps
+    error('calculateDLGFault:ZeroImpedance', ...
+        'Total equivalent sequence impedance must be nonzero.');
+end
+
+I1 = Vth_pu / Ztotal;
+I2 = -I1 * Zg / Zden;
+I0 = -I1 * Z2_pu / Zden;
+
+a = exp(1i * 2*pi/3);
+
+Tinv = [ ...
+    1, 1, 1;
+    1, a^2, a;
+    1, a, a^2];
+
+Iphase = Tinv * [I0; I1; I2];
+
+fault.I0_pu = I0;
+fault.I1_pu = I1;
+fault.I2_pu = I2;
+
+fault.Ia_pu = Iphase(1);
+fault.Ib_pu = Iphase(2);
+fault.Ic_pu = Iphase(3);
+end
+
+
+
+========== FILE: matlab/protection/calculateRelayOperatingTime.m ==========
+FILE NOT FOUND
+
+
+========== FULL UNIT TEST SUITE ==========
+
+Total tests: 15
+Passed: 15
+Failed: 0
+Incomplete: 0
+TestCalculateBaseValues/testStandard11kVSystem | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateBaseValues/testInvalidPowerBase | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateDLGFault/testBoltedDLGFault | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateDLGFault/testFaultImpedance | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateDLGFault/testZeroParallelDenominator | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateSLGFault/testBoltedSLGFault | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateSLGFault/testFaultImpedance | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateSLGFault/testZeroTotalImpedance | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateSequenceComponents/testBalancedPositiveSequence | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateSequenceComponents/testBalancedNegativeSequence | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateSequenceComponents/testZeroSequence | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateSequenceComponents/testInvalidInput | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateThreePhaseFault/testBoltedFault | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateThreePhaseFault/testFaultImpedance | Passed=1 | Failed=0 | Incomplete=0
+TestCalculateThreePhaseFault/testZeroTotalImpedance | Passed=1 | Failed=0 | Incomplete=0

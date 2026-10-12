@@ -15,6 +15,12 @@ Planned responsibilities include:
 - Building network impedance representations.
 - Solving analytical fault cases.
 - Evaluating relay and coordination calculations once their equations and assumptions are approved.
+- Converting primary fault current to each relay's CT secondary current.
+- Checking primary/backup operating times and scenario-specific CTI.
+- Running multiple fault scenarios and returning structured fault, relay, and
+  coordination results.
+- Validating transformer terminals, voltage bases, winding connections, and
+  zero-sequence transfer assumptions.
 - Producing machine-readable result structures for tests and reports.
 
 ## Simulink Simulation Engine
@@ -27,6 +33,61 @@ Simulation models should expose documented parameters and measurement interfaces
 
 The interface will use versioned configuration and result schemas. A study definition should identify the network case, base values, fault type and location, protection settings, solver configuration, and expected outputs. Analytical results and simulation outputs should be normalized into comparable quantities with units, timestamps, and metadata.
 
+The current protection data flow is:
+
+`fault current in primary amperes -> relay-specific CT conversion -> relay operating time in seconds -> primary/backup coordination result`.
+
+Relay pickup settings are expressed in CT secondary amperes. Breaker opening
+time is not included in relay operating time or CTI.
+
+The integrated analytical entry point is
+`runIntegratedFaultStudy(network, scenarios, relays, coordinationPairs)`.
+The network is validated by `validateRadialNetwork`; an illustrative test
+configuration is provided by `createIllustrativeRadialNetwork`, while
+`createIllustrativeTransformerRadialNetwork` provides a 33/11 kV case. A scenario
+identifies a faulted bus, fault type, and per-unit fault impedance. Its output
+contains per-unit and ampere fault-current values, phase and sequence currents,
+relay secondary currents and operating times, and applicable coordination
+results. `convertPuImpedanceBase` applies per-unit base conversion only when
+the voltage bases refer to the same physical transformer side. The current
+topology model supports a connected branched radial network with one upstream
+element per non-source bus. A fault study walks the unique source-to-fault path
+through branch and transformer elements. Relay locations are explicit for new
+configurations: branch `from`/`to` sides or transformer `high`/`low` sides.
+The legacy `protectedBranch` field remains supported and maps to the branch
+from-bus side.
+
+Only path elements carry the modeled single-source fault contribution. Sibling
+branches receive zero current. Current in per unit is converted to amperes
+using the voltage base at each relay measurement side, then converted through
+that relay's CT. This preserves distinct high-side and low-side transformer
+relay currents. The model does not include taps, phase shifts, load flow,
+mutual coupling, directional elements, parallel sources, or mesh networks.
+
+The advanced protection layer is separate from the fault solver. Protection
+zones validate relay, network-element, and optional breaker references.
+`calculateBreakerClearingTime` adds a configured breaker opening delay after
+relay operating time. `runFaultSensitivityStudy` reuses the integrated study
+results and emits relay and coordination tables containing CT-secondary
+current, pickup ratio, relay time, breaker delay, total clearing time, CT
+screening status, and directional status. `generateFaultSensitivityReport`
+creates scenario, relay-time, coordination, failed-coordination,
+non-operating-relay, CT-warning, and unsupported-direction tables.
+
+Directional decisions are unsupported unless explicit current and polarizing
+voltage phasors are supplied. CT screening is a threshold warning, not an
+electromagnetic saturation calculation.
+
+`evaluateBreakerFailureScenario` consumes one integrated fault-study result,
+explicit zones, relays, breakers, and a non-mutating failure override. It
+checks primary zone coverage, primary pickup, breaker state, configured
+backup eligibility, directional blocking status, and backup breaker state.
+It returns separate relay CTI, primary/backup total clearing times,
+clearing-time margin, and an explicit uncleared status when no modeled path
+succeeds. `runFaultSensitivityStudy` optionally evaluates these scenarios and
+`generateFaultSensitivityReport` exposes backup outcomes, uncleared faults,
+and zone-configuration issues in separate tables.
+
 ## Repository Boundaries
 
 - `matlab/` contains analytical and reporting implementation.
@@ -34,3 +95,12 @@ The interface will use versioned configuration and result schemas. A study defin
 - `tests/` contains tests that exercise one engine or compare both engines.
 - `results/` contains generated artifacts and should not become a source-data store.
 - `docs/` contains assumptions, decisions, validation criteria, and environment guidance.
+## Phasor and selectivity layer
+
+The optional phasor layer consumes `runIntegratedFaultStudy` results, computes
+sequence and phase quantities at supported radial-path buses and relay
+locations, and passes positive-sequence phasors to the existing directional
+supervision evaluator. `buildProtectionSelectivityMatrix` combines those
+measurements with sensitivity-table timing and breaker-failure outcomes
+without recalculating electrical quantities. Unsupported off-path or missing
+phasor cases remain explicit statuses.

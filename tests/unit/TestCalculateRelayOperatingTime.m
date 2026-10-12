@@ -1,0 +1,156 @@
+classdef TestCalculateRelayOperatingTime < matlab.unittest.TestCase
+
+    methods (Test)
+
+        function testStandardInverseAtDoublePickup(testCase)
+            expected = 0.14 / (2^0.02 - 1);
+
+            actual = calculateRelayOperatingTime(2, 1, 1, ...
+                'Standard Inverse');
+
+            testCase.verifyEqual(actual, expected, 'AbsTol', 1e-12);
+            testCase.verifyEqual(actual, 10.03, 'AbsTol', 0.01);
+        end
+
+        function testVeryInverseAtDoublePickup(testCase)
+            expected = 13.5 / (2 - 1);
+
+            actual = calculateRelayOperatingTime(2, 1, 1, ...
+                'Very Inverse');
+
+            testCase.verifyEqual(actual, expected, 'AbsTol', 1e-12);
+        end
+
+        function testExtremelyInverseAtDoublePickup(testCase)
+            expected = 80 / (2^2 - 1);
+
+            actual = calculateRelayOperatingTime(2, 1, 1, ...
+                'Extremely Inverse');
+
+            testCase.verifyEqual(actual, expected, 'AbsTol', 1e-12);
+        end
+
+        function testDoublingTMSDoublesTime(testCase)
+            time1 = calculateRelayOperatingTime(2, 1, 1, 'SI');
+            time2 = calculateRelayOperatingTime(2, 1, 2, 'SI');
+
+            testCase.verifyEqual(time2, 2*time1, 'AbsTol', 1e-12);
+        end
+
+        function testAtOrBelowPickupDoesNotTrip(testCase)
+            testCase.verifyEqual( ...
+                calculateRelayOperatingTime(0.5, 1, 1, 'SI'), Inf);
+            testCase.verifyEqual( ...
+                calculateRelayOperatingTime(1, 1, 1, 'SI'), Inf);
+        end
+
+        function testSlightlyAbovePickupIsFinite(testCase)
+            actual = calculateRelayOperatingTime(1 + 1e-6, 1, 1, 'SI');
+
+            testCase.verifyTrue(isfinite(actual));
+            testCase.verifyGreaterThan(actual, 0);
+        end
+
+        function testCurveNameMatchingIsCaseInsensitive(testCase)
+            named = calculateRelayOperatingTime(2, 1, 1, ...
+                'sTaNdArD iNvErSe');
+            scalarString = calculateRelayOperatingTime(2, 1, 1, ...
+                "STANDARD INVERSE");
+
+            testCase.verifyEqual(scalarString, named, 'AbsTol', 1e-12);
+        end
+
+        function testCurveAliases(testCase)
+            testCase.verifyEqual( ...
+                calculateRelayOperatingTime(2, 1, 1, 'SI'), ...
+                calculateRelayOperatingTime(2, 1, 1, 'Standard Inverse'), ...
+                'AbsTol', 1e-12);
+            testCase.verifyEqual( ...
+                calculateRelayOperatingTime(2, 1, 1, 'vi'), ...
+                calculateRelayOperatingTime(2, 1, 1, 'Very Inverse'), ...
+                'AbsTol', 1e-12);
+            testCase.verifyEqual( ...
+                calculateRelayOperatingTime(2, 1, 1, 'Ei'), ...
+                calculateRelayOperatingTime(2, 1, 1, 'Extremely Inverse'), ...
+                'AbsTol', 1e-12);
+        end
+
+        function testZeroRelayCurrentDoesNotTrip(testCase)
+            testCase.verifyEqual( ...
+                calculateRelayOperatingTime(0, 1, 1, 'SI'), Inf);
+        end
+
+        function testNegativeRelayCurrent(testCase)
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime(-1, 1, 1, 'SI'), ...
+                'calculateRelayOperatingTime:InvalidCurrent');
+        end
+
+        function testInvalidPickupCurrent(testCase)
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime(1, 0, 1, 'SI'), ...
+                'calculateRelayOperatingTime:InvalidPickupCurrent');
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime(1, -1, 1, 'SI'), ...
+                'calculateRelayOperatingTime:InvalidPickupCurrent');
+        end
+
+        function testInvalidTMS(testCase)
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime(1, 1, 0, 'SI'), ...
+                'calculateRelayOperatingTime:InvalidTMS');
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime(1, 1, -1, 'SI'), ...
+                'calculateRelayOperatingTime:InvalidTMS');
+        end
+
+        function testInvalidNumericInputs(testCase)
+            invalidInputs = {NaN, Inf, 1 + 1i, [1 2]};
+
+            for inputIndex = 1:numel(invalidInputs)
+                testCase.verifyError( ...
+                    @() calculateRelayOperatingTime( ...
+                    invalidInputs{inputIndex}, 1, 1, 'SI'), ...
+                    'calculateRelayOperatingTime:InvalidCurrent');
+                testCase.verifyError( ...
+                    @() calculateRelayOperatingTime( ...
+                    1, invalidInputs{inputIndex}, 1, 'SI'), ...
+                    'calculateRelayOperatingTime:InvalidPickupCurrent');
+                testCase.verifyError( ...
+                    @() calculateRelayOperatingTime( ...
+                    1, 1, invalidInputs{inputIndex}, 'SI'), ...
+                    'calculateRelayOperatingTime:InvalidTMS');
+            end
+        end
+
+        function testInvalidNumericTypes(testCase)
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime('1', 1, 1, 'SI'), ...
+                'calculateRelayOperatingTime:InvalidCurrent');
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime(1, '1', 1, 'SI'), ...
+                'calculateRelayOperatingTime:InvalidPickupCurrent');
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime(1, 1, '1', 'SI'), ...
+                'calculateRelayOperatingTime:InvalidTMS');
+        end
+
+        function testInvalidCurveInputs(testCase)
+            invalidCurves = {'', ["SI" "VI"], [], 1, missing};
+
+            for inputIndex = 1:numel(invalidCurves)
+                testCase.verifyError( ...
+                    @() calculateRelayOperatingTime(2, 1, 1, ...
+                    invalidCurves{inputIndex}), ...
+                    'calculateRelayOperatingTime:InvalidCurveType');
+            end
+        end
+
+        function testUnsupportedCurve(testCase)
+            testCase.verifyError( ...
+                @() calculateRelayOperatingTime(2, 1, 1, 'Inverse'), ...
+                'calculateRelayOperatingTime:UnsupportedCurve');
+        end
+
+    end
+end
