@@ -25,13 +25,36 @@ Planned responsibilities include:
 
 ## Simulink Simulation Engine
 
-The Simulink engine will own dynamic, time-domain representations of the network, faults, protection devices, breakers, measurement points, and reusable subsystems. Simscape Electrical models will be added only after the required products and modeling conventions are verified.
+The Simulink and Simscape Electrical engine owns dynamic, time-domain representations
+of the power network, faults, measurement points, and protection devices.
+Component selections are verified against Simscape Electrical physical modeling
+blocks (`ee_lib.slx`), explicitly rejecting legacy Specialized Power Systems (`powerlib`).
 
-Simulation models should expose documented parameters and measurement interfaces. Model-specific initialization should be explicit and should not silently replace the analytical configuration.
+Dynamic model execution is governed by a license-aware entry point:
+- `checkSimulationCapabilities`: Audits product installation, licenses, APIs, and components.
+- `runDynamicFaultSimulation`: Deterministic entry point that halts execution safely with
+  status `BLOCKED` when licensing prerequisites are not met, avoiding model corruption or fake data.
+- Detailed model parameters, block inventory, and wiring topology are documented in
+  `docs/simulation-model-specification.md`.
 
 ## Interface Between Engines
 
-The interface will use versioned configuration and result schemas. A study definition should identify the network case, base values, fault type and location, protection settings, solver configuration, and expected outputs. Analytical results and simulation outputs should be normalized into comparable quantities with units, timestamps, and metadata.
+The analytical-to-simulation interface is governed by strict configuration, schema,
+and comparison contracts documented in `docs/simulation-integration.md`:
+
+- **Input Contract:** `validateSimulationInput` normalizes the network, fault scenario,
+  timing parameters, solver options (`ode23t`, $\Delta t_{\text{max}} = 50\,\mu\text{s}$),
+  and requested measurement locations.
+- **Output Schema:** `createSimulationResultSchema` and `validateSimulationResult` enforce
+  consistent execution states (`NOT_RUN`, `BLOCKED`, `BUILD_FAILED`, `SIMULATION_FAILED`,
+  `SIMULATION_COMPLETED`, `MEASUREMENTS_INVALID`, `VALIDATION_COMPLETED`), waveform arrays,
+  provenance metadata, and strict rejection of unsimulated data claims.
+- **Measurement Processing:** `validateMeasurementWindow`, `extractSimulationRMS`, and
+  `estimateFundamentalPhasor` extract steady-state RMS currents and fundamental complex phasors
+  from time-domain waveforms over integer post-transient cycles.
+- **Cross-Engine Comparison:** `compareAnalyticalAndSimulation` validates agreement against
+  analytical benchmark values within approved tolerances and rejects cross-transformer
+  comparisons across mismatched voltage bases.
 
 The current protection data flow is:
 

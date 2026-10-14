@@ -1,0 +1,59 @@
+=================================================================
+ PHASE F VALIDATION REPORT — Dynamic Relay & Breaker Switching
+ Power System Fault Analysis & Protection Coordination Simulator
+ MATLAB Release: R2026b    Date: 2026-10-14 18:21
+=================================================================
+
+1. ENVIRONMENT CHECK
+   ─────────────────
+   Status               : READY
+   Power System Blocks  : true
+   Simscape Electrical  : true
+
+2. MODEL REBUILD
+   ─────────────────
+   Old model deleted — rebuilding with updated solver settings.
+   Model built: C:\Users\ankes\OneDrive\Desktop\ee\simulink\models\radial_fault_study_network.slx
+
+3. RELAY CONFIGURATION
+   ───────────────────
+   RELAY_BUS_B: CT=400/5 A, Pickup=1.0 A-sec, TMS=0.10, Standard Inverse, CB=CB_BUS_B (50 ms)
+   RELAY_BUS_A: CT=600/5 A, Pickup=1.0 A-sec, TMS=0.25, Standard Inverse, CB=CB_BUS_A (60 ms)
+   RELAY_33KV: CT=200/5 A, Pickup=1.5 A-sec, TMS=0.40, Standard Inverse, CB=CB_33KV (80 ms)
+
+4. SCENARIO RESULTS
+   Scenario        FaultType TripB(s)   OpenB(s)   TripA(s)   OpenA(s)   Cleared  PASS  
+   --------------------------------------------------------------------------------
+   PF_3PH          3PH      0.2625     0.3125     N/A        N/A        true     PASS  
+   PF_SLG          SLG      0.2614     0.3114     N/A        N/A        true     PASS  
+   PF_LL           LL       0.2790     0.3290     N/A        N/A        true     PASS  
+   PF_DLG          DLG      0.2650     0.3150     N/A        N/A        true     PASS  
+   PF_HEALTHY      HEALTHY  N/A        N/A        N/A        N/A        false    PASS  
+   PF_3PH_CBF      3PH      0.2625     N/A        0.6766     0.7366     true     PASS  
+   --------------------------------------------------------------------------------
+
+5. ANALYTICAL vs SIMULATED TIMING CROSS-VALIDATION (±20 ms tolerance)
+   Fault     I1-sim(A)     Ana-B(s)      Sim-B(s)      ErrB(ms)    OpenB(s)    PASS  
+   ------------------------------------------------------------------------------
+   3PH       1871.33       0.2146        0.2125              -2.1  0.2625      PASS  
+   SLG       653.58        0.2124        0.2114              -0.9  0.2614      PASS  
+   LL        938.35        0.2245        0.2290              +4.5  0.2790      PASS  
+   DLG       1275.47       0.2131        0.2150              +2.0  0.2650      PASS  
+   ------------------------------------------------------------------------------
+
+6. FAULT CLEARING AND CURRENT EXTINCTION
+   Scenario         Cleared   Extinction(s)   PostPeak(A)         PASS  
+   -----------------------------------------------------------------
+   PF_3PH           true      0.3225          0.0090              PASS  
+   PF_SLG           true      0.3214          0.0090              PASS  
+   PF_LL            true      0.3390          0.0090              PASS  
+   PF_DLG           true      0.3251          0.0090              PASS  
+   PF_HEALTHY       false     N/A             74.9739             PASS  
+   PF_3PH_CBF       true      0.7466          0.0090              PASS  
+   -----------------------------------------------------------------
+
+7. OVERALL PHASE F VALIDATION RESULT
+   ────────────────────────────────────
+   RESULT: PASS — All Phase F acceptance criteria met.
+   Report: C:\Users\ankes\OneDrive\Desktop\ee\results\phase_f_validation_report.txt
+=================================================================

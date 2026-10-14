@@ -17,18 +17,30 @@ Validation will establish whether analytical calculations and Simulink/Simscape 
    The integrated radial reference case independently checks source-plus-path
    sequence impedance, per-unit-to-ampere conversion, relay path selection,
    and coordination output across multiple buses and fault types.
-5. **Simulation validation:** Run the same cases in Simulink and extract measurements at matching buses, phases, and timestamps.
-6. **Cross-engine comparison:** Compare corresponding phasors, RMS values, fault currents, voltages, relay pickup/operate times, and breaker events.
+5. **Simulation validation:** Run identical fault scenarios in Simscape Electrical,
+   enforcing the license gate via `checkSimulationCapabilities`. When licensed, extract
+   measurements using `validateMeasurementWindow`, `extractSimulationRMS`, and `estimateFundamentalPhasor`.
+6. **Cross-engine comparison:** Evaluate simulation measurements against analytical benchmark
+   quantities via `compareAnalyticalAndSimulation`, checking voltage bases, units, absolute error,
+   and relative percentage error.
 
 ## Comparison Method
 
 Each comparison must identify the case, parameter source, units, solver settings, sample or event alignment method, and result provenance. Steady-state or phasor quantities should be compared separately from transient waveform quantities. Event timing should use a documented threshold or event-detection method.
 
-For each quantity, report absolute error and a normalized relative error where the reference magnitude is nonzero. Near-zero reference values require an absolute tolerance or a documented floor to avoid unstable relative-error percentages.
+`compareAnalyticalAndSimulation` enforces:
+- Valid measurement window over integer steady-state cycles (excluding the subtransient inception cycle).
+- Rejection of cross-transformer comparisons where voltage/current bases differ without explicit conversion (`INCOMPATIBLE_BASIS`).
+- Clean skipping of unexecuted or blocked simulations (`SKIPPED`).
+- Relative error computation for nonzero references: $\text{Pct Err} = 100 \times |X_{\text{sim}} - X_{\text{ana}}| / |X_{\text{ana}}|$.
+- Absolute error computation: $\text{Abs Err} = |X_{\text{sim}} - X_{\text{ana}}|$.
 
 ## Tolerances and Acceptance
 
-Tolerances must be approved per quantity and study type before results are assessed. They should account for numerical precision, solver settings, discretization, initialization, measurement filtering, and model simplifications. A result passes only when it is within the applicable tolerance and the underlying assumptions are satisfied.
+Standard approved comparison tolerances:
+- **Steady-state fault current RMS magnitude:** Relative tolerance $\le 5.0\%$, absolute tolerance $0.01\,\text{A}$.
+- **Prefault voltage RMS magnitude:** Relative tolerance $\le 2.0\%$, absolute tolerance $1.0\,\text{V}$.
+- **Fundamental complex phasor angle:** Absolute angle tolerance $\le 2.0^\circ$.
 
 Failures must record the case identifier, expected and observed values, error, tolerance, environment, and likely cause. Tolerance changes require an engineering rationale and a documentation update; they must not be used to conceal model or calculation defects.
 
@@ -86,3 +98,21 @@ four fault types, transformer-side bases, off-path unsupported measurements,
 zero-sequence blocking, and selectivity-table consumption. These tests validate
 the stated radial equivalent only; they do not establish commercial relay
 directional behavior or field protection selectivity.
+
+## Phase D: Physical Multi-Fault Simulation Validation
+
+### Acceptance Criteria and Tolerance Limits
+For each supported physical fault mode in the 33/11 kV radial network (`radial_fault_study_network.slx`), physical simulations must satisfy:
+1. **Convergence and Finiteness:**
+   Waveforms must be finite and time vectors strictly monotonic across the entire duration.
+2. **Timing Activation:**
+   Pre-fault window ($t < 0.05\,\text{s}$) currents must remain within healthy load limits ($< 100\,\text{A}$). Following fault inception ($t > 0.05\,\text{s}$), currents must rise to their expected fault envelope.
+3. **Fundamental AC RMS Extraction:**
+   Fundamental-frequency phasors are estimated using orthogonal Fourier projection over an integer steady-state window ($t = 0.07$ to $0.15\,\text{s}$), completely separating steady-state AC from decaying DC offset.
+4. **Sequence Component Verification:**
+   - **3PH:** Positive sequence $I_1$ must match analytical within $0.5\%$; $I_0 < 1.0\,\text{A}$, $I_2 < 50.0\,\text{A}$.
+   - **SLG (AG):** Symmetrical components $I_0, I_1, I_2$ must be equal and comparable; relative error against sequence calculations including load superposition must be $\le 3.0\%$ (unloaded: $\le 0.1\%$).
+   - **LL (BC):** Zero-sequence $I_0 < 1.0\,\text{A}$; positive and negative sequence $I_1 \approx I_2$ within $0.5\%$ of analytical benchmark ($1623.38\,\text{A}$ phase fault current).
+   - **DLG (BCG):** Symmetrical components $I_0, I_1, I_2$ must all be non-zero; relative error of $I_1$ within $2.5\%$ with load superposition ($< 0.1\%$ unloaded).
+   - **Healthy:** Positive-sequence current matches 1 MW load ($52.49\,\text{A}$) within $1.5\%$; $I_0 < 0.5\,\text{A}$, $I_2 < 0.5\,\text{A}$.
+

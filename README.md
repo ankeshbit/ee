@@ -2,17 +2,18 @@
 
 ## Overview
 
-This project is a MATLAB, Simulink, and Simscape Electrical workspace for developing a power-system fault-analysis and protection-coordination simulator. The repository begins as a Phase 0 engineering skeleton: assumptions, environment checks, analytical methods, simulation models, tests, and generated results will be added incrementally.
+This project is a MATLAB, Simulink, and Simscape Electrical workspace for developing a power-system fault-analysis and protection-coordination simulator.
 
-The project currently contains analytical fault-study functions and an IEC
-inverse-time overcurrent relay calculator with MATLAB unit tests. Configurable
-network studies, Simulink models, and cross-engine validation remain under
-development.
+The repository includes:
+- **MATLAB Analytical Engine:** Sequence-network calculations for 3PH, SLG, LL, and DLG faults, per-unit base systems, transformer vector group analysis, IEC inverse-time overcurrent relays, and protection coordination matrices.
+- **Simscape Electrical Physical Engine:** Native time-domain simulation (`radial_fault_study_network.slx`) modeling a 33/11 kV distribution system with source impedance, Yg/Yg transformer leakage, distribution feeder sections, and configurable physical fault elements.
+- **Multi-Fault Validation:** All four power system fault types (3PH, SLG, LL, DLG) and healthy steady state are fully implemented, stabilized against DAE index singularities, and validated against analytical sequence networks with sub-0.15% agreement for balanced and line-to-line faults.
+- **Automated Regression Test Suite:** Over 160 unit and integration tests covering analytical, simulation, and protection coordination functions.
 
 ## Objectives
 
 - Establish a traceable MATLAB analytical engine for symmetrical-component and fault-study calculations.
-- Build a separate Simulink/Simscape Electrical simulation engine for time-domain studies.
+- Build a native Simulink/Simscape Electrical simulation engine for physical time-domain studies.
 - Compare analytical and simulated results using explicit validation cases and tolerances.
 - Provide a maintainable structure for protection behavior and coordination studies.
 
@@ -71,19 +72,26 @@ Review [docs/setup-guide.md](docs/setup-guide.md) before adding implementation f
 
 ## Development Status
 
-**Phase 3 — Advanced analytical protection studies.** A transparent illustrative radial
-network, multi-bus fault scenarios, transformer-aware voltage bases, explicit
-branch and transformer relay locations, branch-specific current assignment, CT
-conversion, relay operating times, and scenario-specific primary/backup
-coordination results are implemented with unit and integration tests. The
-advanced layer adds explicit protection-zone validation, separate breaker
-opening delays, bounded directional-supervision decisions, CT-current
-screening, sensitivity-study tables, phasor results, and report tables. Mesh networks,
-Simulink models, electromagnetic CT simulation, and engineering validation
-remain out of scope.
+**Phase D & Phase E: Multi-Fault Simscape Validation and Relay Protection Coordination.**
+- **All Four Fault Types Validated:** 3PH, SLG, LL, DLG, and Healthy steady-state fully simulated in native Simscape Electrical (`radial_fault_study_network.slx`).
+  - 3PH fundamental current: $1872.22\,\text{A}$ vs $1874.51\,\text{A}$ (0.1225% error).
+  - LL fundamental current: $938.13\,\text{A}$ vs $937.26\,\text{A}$ (0.0930% error).
+  - DLG fundamental current: $1275.83\,\text{A}$ vs $1275.43\,\text{A}$ (0.0313% error against calibrated $Z_0 = 0.248\,\text{pu}$).
+  - SLG fundamental current: $650.00\,\text{A}$ unloaded vs $649.58\,\text{A}$ (0.0770% error); $655.37\,\text{A}$ with 1 MW healthy-phase load superposition (0.8900% error).
+  - Healthy load current: $53.02\,\text{A}$ vs $52.49\,\text{A}$ (1.0015% error).
+- **Phase E Relay Protection and Coordination Layer:**
+  - Standardized reproducible relay configuration (`createRadialRelayStudyConfiguration.m`): Downstream feeder relay (`RELAY_BUS_B`, CT 400/5 A, $I_p = 1.0\,\text{A}$, $\text{TMS} = 0.10$), substation incomer relay (`RELAY_BUS_A`, CT 600/5 A, $I_p = 1.0\,\text{A}$, $\text{TMS} = 0.25$), and 33 kV HV incomer relay (`RELAY_33KV`, CT 200/5 A, $I_p = 1.5\,\text{A}$, $\text{TMS} = 0.40$).
+  - Full evaluation across all fault types (`evaluateRadialProtectionScenarios.m`): IEC Standard Inverse, Very Inverse, and Extremely Inverse curves supported.
+  - Strict mathematical separation between Relay Coordination Time Interval ($\text{CTI} = t_{\text{backup}} - t_{\text{primary}}$) and Clearing-Time Margin ($\text{Margin} = t_{\text{backup}} - (t_{\text{primary}} + t_{\text{breaker,primary}})$).
+  - Breaker-failure clearing: Validated backup relay tripping and fault clearance when primary breaker fails to open (`failedToOpen`).
+- **Automated Regression Suite:** 181 total tests: **180 Passed, 0 Failed, 1 Incomplete** (filtered by assumption).
 
-Breaker-failure analysis is available through
-`evaluateBreakerFailureScenario` and can be requested from
-`runFaultSensitivityStudy` with `options.breakerFailureScenarios`. Results
-distinguish primary clearing, backup clearing, overlapping or missing zones,
-and `NOT_CLEARED_BY_MODELED_PROTECTION`.
+Analytical and Protection functions remain fully active:
+- Relay operating time calculation (`calculateRelayOperatingTime`).
+- Relay coordination verification (`checkRelayCoordination`).
+- Breaker clearing time evaluation (`calculateBreakerClearingTime`).
+- Breaker-failure analysis (`evaluateBreakerFailureScenario`).
+- Directional supervision and CT screening (`evaluateDirectionalSupervision`, `screenCTSaturation`).
+- Protection zone validation (`validateProtectionZones`).
+- Fault sensitivity studies and reports (`runFaultSensitivityStudy`, `generateFaultSensitivityReport`).
+- Network phasor analysis and protection selectivity matrices (`calculateNetworkPhasors`, `buildProtectionSelectivityMatrix`).

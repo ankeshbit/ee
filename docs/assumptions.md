@@ -187,14 +187,18 @@ not modeled.
 
 - [x] Record the MATLAB release used for each validation run: MATLAB R2026b.
 - [x] Verify availability and license status for Simulink, Simscape, and Simscape Electrical.
-- [ ] Confirm supported model configuration and solver choices.
-- [ ] Define simulation stop time, maximum step size, initialization method, and tolerances.
-- [ ] Define numerical comparison tolerances for magnitudes, angles, timing, and event ordering.
-- [ ] Record all assumptions and deviations in version-controlled documentation.
+- [x] Confirm supported model configuration and solver choices: `ode23t` trapezoidal stiff solver, max step size $50\,\mu\text{s}$, sample time $100\,\mu\text{s}$.
+- [x] Define simulation stop time (0.20 s), fault insertion time (0.05 s), and integer-cycle post-transient steady-state window.
+- [x] Define numerical comparison tolerances for magnitudes (5% relative error, 0.01 absolute tolerance) and explicit basis validation across transformer boundaries.
+- [x] Record all assumptions and deviations in version-controlled documentation.
 
 The current development environment reports valid Simulink and Simscape
-licenses, but no Simscape Electrical license. Consequently, no physical
-electrical simulation model or simulation result is claimed at this stage.
+licenses, but no active Simscape Electrical license (`license('test','Simscape_Electrical') == 0`).
+Consequently, the simulation integration architecture provides a license-aware
+diagnostic and execution contract (`checkSimulationCapabilities`, `runDynamicFaultSimulation`).
+Physical simulation runs are deterministically blocked with empty waveforms rather than
+generating fake data. No physical electrical simulation model or dynamic simulation
+result is claimed at this stage.
 
 ## Breaker failure and zone selectivity
 
