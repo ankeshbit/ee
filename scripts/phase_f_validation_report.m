@@ -157,10 +157,15 @@ fprintf('   %s\n\n', repmat('-',1,80));
 
 %% ── 5. Analytical cross-validation ──────────────────────────────────────
 pLog('5. ANALYTICAL vs SIMULATED TIMING CROSS-VALIDATION (±%.0f ms tolerance)\n', RELAY_TOL*1e3);
-pLog('   %-8s  %-12s  %-12s  %-12s  %-10s  %-10s  %-6s\n', ...
-    'Fault','I1-sim(A)','Ana-B(s)','Sim-B(s)','ErrB(ms)','OpenB(s)','PASS');
-pLog('   %s\n', repmat('-',1,78));
-fprintf('\n5. ANALYTICAL vs SIMULATED TIMING CROSS-VALIDATION\n');
+pLog('   Relay B Settings: CT=400/5 A, Pickup=1.0 A sec (80 A pri), TMS=0.10, Standard Inverse\n');
+pLog('   Note: Distinguishes between Symmetrical Component basis (I1, Phase E baseline) and\n');
+pLog('         Physical Phase Element basis (I_max, line current sensed by CT in Phase F).\n\n');
+
+pLog('   [Part A: Physical Phase Overcurrent Element Basis — I_max (Actual Relay Sensed Input)]\n');
+pLog('   %-8s  %-12s  %-10s  %-12s  %-12s  %-10s  %-10s  %-6s\n', ...
+    'Fault','I_max(A)','M_max','Ana-B(s)','Sim-B(s)','ErrB(ms)','OpenB(s)','PASS');
+pLog('   %s\n', repmat('-',1,85));
+fprintf('\n5. ANALYTICAL vs SIMULATED TIMING CROSS-VALIDATION (I_max basis)\n');
 
 for sIdx = 1:4   % 3PH, SLG, LL, DLG
     res = results{sIdx};
@@ -183,17 +188,46 @@ for sIdx = 1:4   % 3PH, SLG, LL, DLG
         continue;
     end
     simRel  = tripB - FAULT_START;
-    errMs   = (simRel - ap.anaRelayB_trip_s) * 1e3;
-    passXv  = abs(simRel - ap.anaRelayB_trip_s) <= RELAY_TOL;
+    errMs   = (simRel - ap.anaRelayB_trip_Imax_s) * 1e3;
+    passXv  = abs(simRel - ap.anaRelayB_trip_Imax_s) <= RELAY_TOL;
     if ~passXv, overallPass = false; end
 
-    pLog('   %-8s  %-12.2f  %-12.4f  %-12.4f  %+10.1f  %-10.4f  %-6s\n', ...
-        res.faultType, ap.I1_fundamental_A, ap.anaRelayB_trip_s, simRel, ...
+    pLog('   %-8s  %-12.2f  %-10.3f  %-12.4f  %-12.4f  %+10.1f  %-10.4f  %-6s\n', ...
+        res.faultType, ap.I_phaseMax_A, ap.multiple_M_max, ap.anaRelayB_trip_Imax_s, simRel, ...
         errMs, openB - FAULT_START, ternary(passXv,'PASS','FAIL'));
-    fprintf('   %-8s  I1=%.1f A  AnaB=%.4f s  SimB=%.4f s  Err=%+.1f ms  [%s]\n', ...
-        res.faultType, ap.I1_fundamental_A, ap.anaRelayB_trip_s, simRel, errMs, ternary(passXv,'PASS','FAIL'));
+    fprintf('   %-8s  Imax=%7.1f A  M=%5.2f  AnaB=%.4f s  SimB=%.4f s  Err=%+.1f ms  [%s]\n', ...
+        res.faultType, ap.I_phaseMax_A, ap.multiple_M_max, ap.anaRelayB_trip_Imax_s, simRel, errMs, ternary(passXv,'PASS','FAIL'));
 end
-pLog('   %s\n\n', repmat('-',1,78));
+pLog('   %s\n\n', repmat('-',1,85));
+
+pLog('   [Part B: Symmetrical Sequence Component Comparison — I1 (Phase E Documentation Basis)]\n');
+pLog('   %-8s  %-12s  %-10s  %-12s  %-12s  %-12s  %-18s\n', ...
+    'Fault','I1_sim(A)','M_I1','Ana-I1(s)','Sim-B(s)','Diff(ms)','Physical Effect');
+pLog('   %s\n', repmat('-',1,88));
+
+for sIdx = 1:4   % 3PH, SLG, LL, DLG
+    res = results{sIdx};
+    if ~strcmp(res.status, 'COMPLETED') || ~isfield(res.analyticalPredictions, 'I1_fundamental_A'), continue; end
+    ap  = res.analyticalPredictions;
+    [tripB, ~, ~, ~, ~] = extractTimings(res);
+    simRel = tripB - FAULT_START;
+    diffMs = (simRel - ap.anaRelayB_trip_I1_s) * 1e3;
+    switch res.faultType
+        case '3PH'
+            noteStr = 'Ia=Ib=Ic=I1 (balanced)';
+        case 'SLG'
+            noteStr = 'Ia=3*I1 (faster trip)';
+        case 'LL'
+            noteStr = 'Ibc=sqrt(3)*I1';
+        case 'DLG'
+            noteStr = 'Ibc>I1 (ground return)';
+        otherwise
+            noteStr = '';
+    end
+    pLog('   %-8s  %-12.2f  %-10.3f  %-12.4f  %-12.4f  %+12.1f  %-18s\n', ...
+        res.faultType, ap.I1_fundamental_A, ap.multiple_M_I1, ap.anaRelayB_trip_I1_s, simRel, diffMs, noteStr);
+end
+pLog('   %s\n\n', repmat('-',1,88));
 
 %% ── 6. Current extinction summary ────────────────────────────────────────
 pLog('6. FAULT CLEARING AND CURRENT EXTINCTION\n');

@@ -1,7 +1,7 @@
 =================================================================
  PHASE F VALIDATION REPORT — Dynamic Relay & Breaker Switching
  Power System Fault Analysis & Protection Coordination Simulator
- MATLAB Release: R2026b    Date: 2026-10-14 18:21
+ MATLAB Release: R2026b    Date: 2026-10-14 18:42
 =================================================================
 
 1. ENVIRONMENT CHECK
@@ -33,13 +33,27 @@
    --------------------------------------------------------------------------------
 
 5. ANALYTICAL vs SIMULATED TIMING CROSS-VALIDATION (±20 ms tolerance)
-   Fault     I1-sim(A)     Ana-B(s)      Sim-B(s)      ErrB(ms)    OpenB(s)    PASS  
-   ------------------------------------------------------------------------------
-   3PH       1871.33       0.2146        0.2125              -2.1  0.2625      PASS  
-   SLG       653.58        0.2124        0.2114              -0.9  0.2614      PASS  
-   LL        938.35        0.2245        0.2290              +4.5  0.2790      PASS  
-   DLG       1275.47       0.2131        0.2150              +2.0  0.2650      PASS  
-   ------------------------------------------------------------------------------
+   Relay B Settings: CT=400/5 A, Pickup=1.0 A sec (80 A pri), TMS=0.10, Standard Inverse
+   Note: Distinguishes between Symmetrical Component basis (I1, Phase E baseline) and
+         Physical Phase Element basis (I_max, line current sensed by CT in Phase F).
+
+   [Part A: Physical Phase Overcurrent Element Basis — I_max (Actual Relay Sensed Input)]
+   Fault     I_max(A)      M_max       Ana-B(s)      Sim-B(s)      ErrB(ms)    OpenB(s)    PASS  
+   -------------------------------------------------------------------------------------
+   3PH       1886.18       23.577      0.2146        0.2125              -2.1  0.2625      PASS  
+   SLG       1947.14       24.339      0.2124        0.2114              -0.9  0.2614      PASS  
+   LL        1647.25       20.591      0.2245        0.2290              +4.5  0.2790      PASS  
+   DLG       1927.55       24.094      0.2131        0.2150              +2.0  0.2650      PASS  
+   -------------------------------------------------------------------------------------
+
+   [Part B: Symmetrical Sequence Component Comparison — I1 (Phase E Documentation Basis)]
+   Fault     I1_sim(A)     M_I1        Ana-I1(s)     Sim-B(s)      Diff(ms)      Physical Effect   
+   ----------------------------------------------------------------------------------------
+   3PH       1871.33       23.392      0.2151        0.2125                -2.7  Ia=Ib=Ic=I1 (balanced)
+   SLG       653.58        8.170       0.3263        0.2114              -114.9  Ia=3*I1 (faster trip)
+   LL        938.35        11.729      0.2774        0.2290               -48.3  Ibc=sqrt(3)*I1    
+   DLG       1275.47       15.943      0.2459        0.2150               -30.8  Ibc>I1 (ground return)
+   ----------------------------------------------------------------------------------------
 
 6. FAULT CLEARING AND CURRENT EXTINCTION
    Scenario         Cleared   Extinction(s)   PostPeak(A)         PASS  

@@ -72,26 +72,65 @@ Review [docs/setup-guide.md](docs/setup-guide.md) before adding implementation f
 
 ## Development Status
 
-**Phase D & Phase E: Multi-Fault Simscape Validation and Relay Protection Coordination.**
-- **All Four Fault Types Validated:** 3PH, SLG, LL, DLG, and Healthy steady-state fully simulated in native Simscape Electrical (`radial_fault_study_network.slx`).
-  - 3PH fundamental current: $1872.22\,\text{A}$ vs $1874.51\,\text{A}$ (0.1225% error).
-  - LL fundamental current: $938.13\,\text{A}$ vs $937.26\,\text{A}$ (0.0930% error).
-  - DLG fundamental current: $1275.83\,\text{A}$ vs $1275.43\,\text{A}$ (0.0313% error against calibrated $Z_0 = 0.248\,\text{pu}$).
-  - SLG fundamental current: $650.00\,\text{A}$ unloaded vs $649.58\,\text{A}$ (0.0770% error); $655.37\,\text{A}$ with 1 MW healthy-phase load superposition (0.8900% error).
-  - Healthy load current: $53.02\,\text{A}$ vs $52.49\,\text{A}$ (1.0015% error).
-- **Phase E Relay Protection and Coordination Layer:**
-  - Standardized reproducible relay configuration (`createRadialRelayStudyConfiguration.m`): Downstream feeder relay (`RELAY_BUS_B`, CT 400/5 A, $I_p = 1.0\,\text{A}$, $\text{TMS} = 0.10$), substation incomer relay (`RELAY_BUS_A`, CT 600/5 A, $I_p = 1.0\,\text{A}$, $\text{TMS} = 0.25$), and 33 kV HV incomer relay (`RELAY_33KV`, CT 200/5 A, $I_p = 1.5\,\text{A}$, $\text{TMS} = 0.40$).
-  - Full evaluation across all fault types (`evaluateRadialProtectionScenarios.m`): IEC Standard Inverse, Very Inverse, and Extremely Inverse curves supported.
-  - Strict mathematical separation between Relay Coordination Time Interval ($\text{CTI} = t_{\text{backup}} - t_{\text{primary}}$) and Clearing-Time Margin ($\text{Margin} = t_{\text{backup}} - (t_{\text{primary}} + t_{\text{breaker,primary}})$).
-  - Breaker-failure clearing: Validated backup relay tripping and fault clearance when primary breaker fails to open (`failedToOpen`).
-- **Automated Regression Suite:** 181 total tests: **180 Passed, 0 Failed, 1 Incomplete** (filtered by assumption).
+**Phase G Complete: Automated Fault Study, Visualization, Validation & Reporting.**
+- **Unified Automated Fault Study:** Single reproducible entry point [`scripts/run_complete_fault_study.m`](scripts/run_complete_fault_study.m) executes all 6 physical Simscape Electrical scenarios (HEALTHY, 3PH, SLG, LL, DLG, 3PH_CBF) alongside analytical sequence networks.
+- **Dynamic Relays & Breakers:** Real-time physical breaker switching, IEC Standard Inverse overcurrent relays, trip commands, and fault-current extinction verification ($I_{\text{post}} < 0.010\,\text{A}$).
+- **Cross-Validation Accuracy:** Dynamic relay operating times match analytical IEC predictions within $\pm 4.5\,\text{ms}$ across all fault types (acceptance limit $\pm 20\,\text{ms}$).
+- **Publication-Quality Visualizations ([results/plots/](results/plots/)):** 41 generated figures (both `.png` and editable `.fig`):
+  - Phase currents with fault inception, relay trip, and breaker opening markers
+  - Bus A and Bus B three-phase voltage waveforms
+  - Relay timer accumulator ($\sigma_B$) and breaker contact states
+  - Grouped bar chart comparing analytical vs simulated currents with error percentage
+  - Relay timing error bar chart with $\pm 20\,\text{ms}$ tolerance band
+- **Consolidated Multi-Format Reports ([results/reports/](results/reports/)):**
+  - Interactive HTML report ([`fault_study_report.html`](results/reports/fault_study_report.html))
+  - Machine-readable CSV summary ([`fault_study_summary.csv`](results/reports/fault_study_summary.csv))
+  - Full MAT result structure ([`fault_study_summary.mat`](results/reports/fault_study_summary.mat))
+  - Text summary report ([`fault_study_report.txt`](results/reports/fault_study_report.txt))
+- **Acceptance Criteria:** 14 out of 14 checks passed, 100% overall pass.
 
-Analytical and Protection functions remain fully active:
-- Relay operating time calculation (`calculateRelayOperatingTime`).
-- Relay coordination verification (`checkRelayCoordination`).
-- Breaker clearing time evaluation (`calculateBreakerClearingTime`).
-- Breaker-failure analysis (`evaluateBreakerFailureScenario`).
-- Directional supervision and CT screening (`evaluateDirectionalSupervision`, `screenCTSaturation`).
-- Protection zone validation (`validateProtectionZones`).
-- Fault sensitivity studies and reports (`runFaultSensitivityStudy`, `generateFaultSensitivityReport`).
-- Network phasor analysis and protection selectivity matrices (`calculateNetworkPhasors`, `buildProtectionSelectivityMatrix`).
+## Running the Complete Fault Study
+
+In MATLAB:
+```matlab
+% Execute complete fault study (both analytical and physical Simscape runs)
+study = run_complete_fault_study();
+
+% Options:
+opts.skipSimulation  = false; % set to true for fast analytical-only execution
+opts.quiet           = false; % display progress to console
+opts.generatePlots   = true;  % export figures to results/plots/
+opts.generateReports = true;  % generate HTML, CSV, MAT, TXT reports
+study = run_complete_fault_study(opts);
+```
+
+## Running Regression Tests
+
+To run the complete Phase G verification suite (including full Phase D and Phase F regressions):
+```matlab
+addpath(genpath('matlab'));
+addpath(genpath('scripts'));
+addpath(genpath('tests'));
+
+results = runtests('tests/integration/TestPhaseGReporting.m');
+table(results)
+```
+
+## Comparison Metrics & Conventions
+
+- **Current Comparison Basis:**
+  - Analytical values represent symmetrical positive-sequence fault current magnitudes ($|I_1| \times I_{\text{base}}$).
+  - Simulated values represent the maximum phase RMS line current sensed by the physical CTs ($I_{\max}$).
+  - For balanced faults (3PH), both metrics coincide ($< 0.7\%$ difference). For asymmetric faults (SLG, LL, DLG), the phase element senses the faulted phase line current ($I_{\max} > I_1$).
+- **Relay Timing Error:**
+  - Computed as $\Delta t = (t_{\text{simulated trip}} - t_{\text{fault inception}}) - t_{\text{analytical IEC}}$.
+  - Acceptance threshold: $|\Delta t| \le 20\,\text{ms}$. Actual observed error: $\le 4.5\,\text{ms}$.
+- **Coordination Time Interval (CTI) vs. Clearing-Time Margin:**
+  - $\text{CTI} = t_{\text{backup relay}} - t_{\text{primary relay}}$ ($0.4044\,\text{s} \ge 0.250\,\text{s}$).
+  - $\text{Clearing Margin} = t_{\text{backup relay}} - (t_{\text{primary relay}} + t_{\text{breaker delay}})$ ($0.3544\,\text{s} \ge 0.200\,\text{s}$).
+
+## Known Limitations
+
+- **Directional Supervision:** Directional decisions are evaluated analytically via phasor angles; dynamic directional blocks are not active in the physical Simulink model.
+- **Breaker-Failure Scenario Scope:** Dynamic breaker failure (CB_BUS_B stuck closed with backup clearing by CB_BUS_A) is validated dynamically for 3PH fault (`PF_3PH_CBF`). Other fault types use analytical clearing estimates.
+- **Circuit Breaker Model:** Breakers are modeled with physical transition resistance without arc reignition or TRV physics.
