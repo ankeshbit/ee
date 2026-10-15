@@ -98,8 +98,9 @@ pLog('\n');
 %% ── 4. Run all Phase F scenarios ─────────────────────────────────────────
 FAULT_START = 0.05;
 SIM_STOP    = 0.60;
-RELAY_TOL   = 0.020;    % ±20 ms analytical vs sim trip time
+RELAY_TOL   = 0.010;    % ±10 ms tightened engineering tolerance (rationale in docs/validation-plan.md)
 EXTINCT_LIM = 0.01;     % A — post-clearing peak current limit
+
 
 faultScenarios = { ...
     struct('scenarioId','PF_3PH',     'faultType','3PH',     'Zf_Ohm',0.001,'Zg_Ohm',0.001,'failCB_B',false,'failCB_A',false); ...

@@ -135,8 +135,9 @@ for relayIndex = 1:numel(relays)
         bus = network.buses(strcmp({network.buses.id}, measurementBus));
         measurementBase = calculateBaseValues( ...
             network.base.SbaseVA, bus.VbaseV);
-        relayCurrent = faultCurrent_pu * measurementBase.IbaseA;
+        relayCurrent = abs(faultCurrent_pu) * measurementBase.IbaseA;
         measurementVoltageBaseV = bus.VbaseV;
+
     else
         relayCurrent = 0;
         measurementVoltageBaseV = [];
