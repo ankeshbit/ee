@@ -8,7 +8,7 @@ The repository includes:
 - **MATLAB Analytical Engine:** Sequence-network calculations for 3PH, SLG, LL, and DLG faults, per-unit base systems, transformer vector group analysis, IEC inverse-time overcurrent relays, and protection coordination matrices.
 - **Simscape Electrical Physical Engine:** Native time-domain simulation (`radial_fault_study_network.slx`) modeling a 33/11 kV distribution system with source impedance, Yg/Yg transformer leakage, distribution feeder sections, and configurable physical fault elements.
 - **Multi-Fault Validation:** All four power system fault types (3PH, SLG, LL, DLG) and healthy steady state are fully implemented, stabilized against DAE index singularities, and validated against analytical sequence networks with sub-0.15% agreement for balanced and line-to-line faults.
-- **Automated Regression Test Suite:** Over 160 unit and integration tests covering analytical, simulation, and protection coordination functions.
+- **Automated Regression Test Suite:** 215 unit and integration tests covering analytical, simulation, and protection coordination functions (214 passed, 1 environment-dependent Simscape license check filtered).
 
 ## Objectives
 
