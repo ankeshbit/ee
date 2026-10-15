@@ -6,7 +6,7 @@
 % produces a consolidated text report.
 %
 % Usage: Run directly from MATLAB command window or via:
-%   matlab -batch "cd('C:/Users/ankes/OneDrive/Desktop/ee'); run('scripts/phase_f_validation_report.m')"
+%   matlab -batch "run('scripts/phase_f_validation_report.m')"
 %
 % Output: results/phase_f_validation_report.txt
 
@@ -80,8 +80,9 @@ else
     fprintf('   No existing model found — building fresh.\n');
 end
 newModelFile = build_radial_fault_model(fullfile(projRoot, 'simulink', 'models'));
-pLog('   Model built: %s\n\n', newModelFile);
-fprintf('   Model built: %s\n\n', newModelFile);
+relModelFile = fullfile('simulink', 'models', 'radial_fault_study_network.slx');
+pLog('   Model built: %s\n\n', relModelFile);
+fprintf('   Model built: %s\n\n', relModelFile);
 
 %% ── 3. Relay configuration summary ──────────────────────────────────────
 cfg = createRadialRelayStudyConfiguration();
@@ -267,11 +268,12 @@ else
     verdict = 'FAIL — One or more Phase F acceptance criteria not met. See FAIL rows above.';
 end
 pLog('   RESULT: %s\n', verdict);
-pLog('   Report: %s\n', reportFile);
+relReportPath = fullfile('results', 'phase_f_validation_report.txt');
+pLog('   Report: %s\n', relReportPath);
 pLog('=================================================================\n');
 
 fprintf('\n7. OVERALL RESULT: %s\n', verdict);
-fprintf('   Report saved: %s\n', reportFile);
+fprintf('   Report saved: %s\n', relReportPath);
 fprintf('=================================================================\n\n');
 
 if fid ~= 1, fclose(fid); end

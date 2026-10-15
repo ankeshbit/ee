@@ -31,8 +31,12 @@ Desktop.ini
 *~
 
 # Generated results; keep directory placeholders under version control
+results/*
+!results/.gitkeep
+!results/plots/
 results/plots/*
 !results/plots/.gitkeep
+!results/reports/
 results/reports/*
 !results/reports/.gitkeep
 

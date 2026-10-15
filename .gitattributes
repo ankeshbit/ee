@@ -1,0 +1,27 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Text files with explicit LF line endings
+*.m text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.csv text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# Binary files — prevent line ending translation or corruption
+*.slx binary
+*.slxc binary
+*.mat binary
+*.fig binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.mex* binary
