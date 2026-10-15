@@ -74,21 +74,19 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
             elseif isfield(simRes, 'faultCurrent_A')
                 IBusB_primary_A = abs(simRes.faultCurrent_A);
             else
-                IBusB_primary_A = 52.49;
+                masterCfg = getSystemMasterConfiguration();
+                IBusB_primary_A = masterCfg.load.power_W.value / (sqrt(3) * masterCfg.load.voltage_V.value);
             end
         else
-            % Analytical baseline
-            switch sDef.faultType
-                case '3PH'
-                    IBusB_primary_A = 1874.51;
-                case 'SLG'
-                    IBusB_primary_A = 649.58; % Calibrated Z0 = 0.248 pu
-                case 'LL'
-                    IBusB_primary_A = 937.26;
-                case 'DLG'
-                    IBusB_primary_A = 1275.43;
-                case 'HEALTHY'
-                    IBusB_primary_A = 52.49;
+            % Analytical baseline derived dynamically from network configuration
+            if strcmp(sDef.faultType, 'HEALTHY')
+                masterCfg = getSystemMasterConfiguration();
+                IBusB_primary_A = masterCfg.load.power_W.value / (sqrt(3) * masterCfg.load.voltage_V.value);
+            else
+                anaScn = struct('id', ['ANA_', sDef.id], 'faultedBus', sDef.faultedBus, ...
+                    'faultType', sDef.faultType, 'Zf_pu', 0.0);
+                anaRes = runIntegratedFaultStudy(config.network, anaScn, config.relays, config.coordinationPairs);
+                IBusB_primary_A = anaRes.faultCurrentMagnitude_A;
             end
         end
 

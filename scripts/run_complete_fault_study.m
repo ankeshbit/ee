@@ -54,11 +54,12 @@ study = p_initStudy();
 study.runTimestamp  = datestr(now,'yyyy-mm-ddTHH:MM:SS'); %#ok<TNOW1,DATST>
 study.matlabVersion = version;
 study.projRoot      = projRoot;
+study.gitCommit     = p_getGitCommit(projRoot);
 
 pLog(options,'\n================================================================\n');
 pLog(options,' PHASE G — Complete Fault Study\n');
 pLog(options,' Power System Fault Analysis & Protection Coordination Simulator\n');
-pLog(options,' MATLAB R%s   %s\n',version('-release'),study.runTimestamp);
+pLog(options,' MATLAB R%s  |  Commit: %s  |  %s\n',version('-release'),study.gitCommit,study.runTimestamp);
 pLog(options,'================================================================\n\n');
 
 %% 1. Dependencies
@@ -174,7 +175,9 @@ if options.generateReports
     study.reportPaths = generateFaultStudyReport(study, reportDir);
     fields = fieldnames(study.reportPaths);
     for i = 1:numel(fields)
-        pLog(options,'     %-6s: %s\n', upper(fields{i}), study.reportPaths.(fields{i}));
+        fullP = study.reportPaths.(fields{i});
+        relP = strrep(fullP, [projRoot, filesep], '');
+        pLog(options,'     %-6s: %s\n', upper(fields{i}), relP);
     end
 else
     pLog(options,'\n[8/8] Reports skipped.\n');
@@ -388,4 +391,15 @@ end
 
 function out = ternary(cond, a, b)
 if cond, out = a; else, out = b; end
+end
+
+function commit = p_getGitCommit(projRoot)
+    commit = 'UNKNOWN';
+    try
+        [st, out] = system(sprintf('git -C "%s" rev-parse --short HEAD', projRoot));
+        if st == 0 && ~isempty(strtrim(out))
+            commit = strtrim(out);
+        end
+    catch
+    end
 end

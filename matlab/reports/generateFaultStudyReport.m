@@ -46,6 +46,25 @@ if fid < 0
     warning('generateFaultStudyReport:CSVFailed','Cannot open %s for writing.', csvFile);
     return;
 end
+commitHash = p_getCommit(study);
+fprintf(fid, '# FAULT STUDY SUMMARY CSV\n');
+fprintf(fid, '# MATLAB Release: R%s\n', version('-release'));
+fprintf(fid, '# Date: %s\n', study.runTimestamp);
+fprintf(fid, '# Git Commit Hash: %s\n', commitHash);
+fprintf(fid, '# Configuration: matlab/config/getSystemMasterConfiguration.m\n');
+fprintf(fid, '# Solver and Tolerances: ode23t, RelTol=1e-4, MaxStep=5e-5, CurrentTol=2.0%%, TimingTol=20ms, MinCTI=0.250s\n');
+if isfield(study, 'testOutcomes') && ~isempty(study.testOutcomes) && isstruct(study.testOutcomes(1))
+    nPass = sum([study.testOutcomes.pass]);
+    nTot = numel(study.testOutcomes);
+    fprintf(fid, '# Acceptance Criteria Summary: %d/%d passed (Overall: %s)\n', ...
+        nPass, nTot, ternary(study.overallPass, 'PASS', 'FAIL'));
+    for ci = 1:numel(study.testOutcomes)
+        oc = study.testOutcomes(ci);
+        fprintf(fid, '# Criterion: %s | Scenario: %s | Value: %s | Limit: %s | Result: %s\n', ...
+            oc.criterion, oc.scenarioId, oc.value, oc.limit, ternary(oc.pass, 'PASS', 'FAIL'));
+    end
+end
+
 % Header
 fprintf(fid,'ScenarioId,FaultType,SimStatus,AnalyticalCurrent_A,SimulatedMaxPhaseRMS_A,');
 fprintf(fid,'AbsError_A,PctError,RelayTripTime_s,BreakerOpenTime_s,');
@@ -149,26 +168,36 @@ end
 W = @(fmt,varargin) fprintf(fid,fmt,varargin{:});
 SEP = repmat('=',1,72);
 sep = repmat('-',1,72);
+commitHash = p_getCommit(study);
 
 W('%s\n',SEP);
 W(' FAULT STUDY REPORT — Power System Fault Analysis & Protection Simulator\n');
 W(' Phase G — Automated Fault Study, Visualization & Reporting\n');
-W(' MATLAB R%s   Generated: %s\n', version('-release'), study.runTimestamp);
+W(' MATLAB Release    : R%s\n', version('-release'));
+W(' Date              : %s\n', study.runTimestamp);
+W(' Git Commit Hash   : %s\n', commitHash);
 W('%s\n\n',SEP);
 
-%% 1. System Configuration
-W('1. SYSTEM CONFIGURATION\n%s\n',sep);
+%% 1. System Configuration & Solver Settings
+W('1. SYSTEM CONFIGURATION & NUMERICAL SOLVER SETTINGS\n%s\n',sep);
 cfg = study.config;
 net = cfg.network;
-W('   System Base       : %.0f MVA\n', net.base.SbaseVA/1e6);
-W('   Source Voltage    : %.0f kV\n', net.base.VbaseV/1e3);
-W('   Frequency         : 50 Hz (nominal)\n');
-W('   Transformer T1    : %.0f/%.0f kV, %.0f MVA, Z1=%.2f pu\n', ...
+W('   Configuration Source : matlab/config/getSystemMasterConfiguration.m\n');
+W('   System Base          : %.0f MVA\n', net.base.SbaseVA/1e6);
+W('   Source Voltage       : %.0f kV\n', net.base.VbaseV/1e3);
+W('   Frequency            : 50 Hz (nominal)\n');
+W('   Transformer T1       : %.0f/%.0f kV, %.0f MVA, Z1=%.2f pu (Yg/Yg)\n', ...
     net.transformers.ratedHighVoltageV/1e3, net.transformers.ratedLowVoltageV/1e3, ...
     net.transformers.ratedSbaseVA/1e6, net.transformers.Z1_pu);
-W('   Fault Resistance  : 0.001 Ohm (Zf_Ohm)\n');
-W('   Fault Location    : Bus B (11 kV)\n');
-W('   Relay Curve       : IEC Standard Inverse  t = 0.14*TMS/(M^0.02-1)\n\n');
+W('   Fault Resistance     : 0.001 Ohm (physical) / 0.0 pu bolted\n');
+W('   Fault Location       : Bus B (11 kV)\n');
+W('   Relay Characteristic : IEC Standard Inverse  t = 0.14*TMS/(M^0.02-1)\n');
+W('   Numerical Solver     : ode23t (trapezoidal stiff)\n');
+W('   Relative Tolerance   : 1e-4\n');
+W('   Max Time Step        : 5e-5 s\n');
+W('   Current Tolerance    : ±2.0%%\n');
+W('   Timing Tolerance     : ±20 ms\n');
+W('   Minimum CTI          : 0.250 s\n\n');
 
 W('   Relay Settings:\n');
 for ri = 1:numel(cfg.relays)
@@ -285,6 +314,7 @@ end
 W = @(s) fprintf(fid,'%s\n',s);
 overallColor = ternary(study.overallPass,'#1a7a3a','#b52020');
 overallTxt   = ternary(study.overallPass,'PASS','FAIL');
+commitHash   = p_getCommit(study);
 
 W('<!DOCTYPE html>');
 W('<html lang="en"><head><meta charset="UTF-8">');
@@ -314,8 +344,8 @@ W('</style></head><body>');
 W('<div class="header">');
 fprintf(fid,'<h1>Power System Fault Study Report</h1>\n');
 fprintf(fid,'<p>Phase G — Automated Fault Study, Visualization &amp; Reporting</p>\n');
-fprintf(fid,'<p>MATLAB %s &nbsp;|&nbsp; Generated: %s</p>\n', ...
-    study.matlabVersion, study.runTimestamp);
+fprintf(fid,'<p>MATLAB %s &nbsp;|&nbsp; Commit: <code>%s</code> &nbsp;|&nbsp; Generated: %s</p>\n', ...
+    study.matlabVersion, commitHash, study.runTimestamp);
 fprintf(fid,'<span class="badge badge-%s">%s</span>\n', ...
     lower(overallTxt), overallTxt);
 W('</div>');
@@ -345,6 +375,9 @@ fprintf(fid,'<tr><td>Acceptance checks passed</td><td class="%s">%d / %d</td></t
 fprintf(fid,'<tr><td>Overall result</td><td class="%s">%s</td></tr>\n', ...
     lower(overallTxt), overallTxt);
 fprintf(fid,'<tr><td>MATLAB version</td><td>%s</td></tr>\n', study.matlabVersion);
+fprintf(fid,'<tr><td>Git Commit Hash</td><td><code>%s</code></td></tr>\n', commitHash);
+fprintf(fid,'<tr><td>Configuration Source</td><td>matlab/config/getSystemMasterConfiguration.m</td></tr>\n');
+fprintf(fid,'<tr><td>Solver &amp; Tolerances</td><td>ode23t, RelTol=1e-4, MaxStep=5e-5, CurrentTol=&plusmn;2.0%%, TimingTol=&plusmn;20ms</td></tr>\n');
 W('</table>');
 W('</div>');
 
@@ -458,4 +491,21 @@ end
 
 function out = ternary(cond, a, b)
 if cond, out = a; else, out = b; end
+end
+
+function commit = p_getCommit(study)
+    if isfield(study, 'gitCommit') && ~isempty(study.gitCommit)
+        commit = study.gitCommit;
+    else
+        commit = 'UNKNOWN';
+        try
+            if isfield(study, 'projRoot') && exist(study.projRoot, 'dir')
+                [st, out] = system(sprintf('git -C "%s" rev-parse --short HEAD', study.projRoot));
+                if st == 0 && ~isempty(strtrim(out))
+                    commit = strtrim(out);
+                end
+            end
+        catch
+        end
+    end
 end

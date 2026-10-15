@@ -49,10 +49,10 @@ res3PH = runRadialFaultSimulation(scn3PH, struct('quiet', false));
 % CROSS-ENGINE VALIDATION BENCHMARK
 % -------------------------------------------------------------------------
 % Analytical Engine Calculation:
-% Base: Sbase = 10 MVA, Vbase,11 = 11 kV -> Ibase,11 = 524.8638 A
-% Impedance path: Source (0.10 pu) + Transformer (0.08 pu) + BR_A (0.05 pu) + BR_B (0.05 pu) = 0.28 pu
-% Analytical Fault Current: If = 1.0 / 0.28 pu = 3.5714 pu -> If = 1874.51 A RMS
-analyticalIf_A = 10e6 / (sqrt(3) * 11e3 * 0.28);
+net = createIllustrativeRadialNetwork();
+anaScn = struct('id', 'ANA_3PH_BUS_B', 'faultedBus', 'BUS_B', 'faultType', '3PH', 'Zf_pu', 0.0);
+anaRes = runIntegratedFaultStudy(net, anaScn);
+analyticalIf_A = anaRes.faultCurrentMagnitude_A;
 simulatedI1_A = res3PH.phasors.I1_magnitude_A;
 absError_A = abs(simulatedI1_A - analyticalIf_A);
 relError_pct = 100 * absError_A / analyticalIf_A;

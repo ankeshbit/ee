@@ -63,7 +63,7 @@ function results = run_all_tests()
     % Exit with non-zero status if running via -batch and tests failed
     if numFailed > 0
         fprintf('\nOVERALL RESULT: FAILED\n');
-        if ~usejava('desktop') && ~isempty(getCurrentTask()) || isBatchExecution()
+        if isBatchExecution()
             exit(1);
         else
             error('run_all_tests:TestFailure', '%d test(s) failed in suite.', numFailed);
