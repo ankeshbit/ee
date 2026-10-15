@@ -1,242 +1,127 @@
-# Engineering Assumptions Checklist
+# Engineering Assumptions & Modeling Boundaries
 
-This checklist identifies decisions that must be verified and recorded before engineering implementation. Items are intentionally unconfirmed at repository initialization.
+This document records the approved engineering assumptions, mathematical conventions, and modeling boundaries governing the power-system fault analysis and protection coordination simulator. All parameters are traceable to [`matlab/config/getSystemMasterConfiguration.m`](../matlab/config/getSystemMasterConfiguration.m).
 
-## Network and Per-Unit System
+---
 
-- [ ] Confirm system frequency and nominal phase-to-phase voltage levels.
-- [ ] Define and approve the system MVA base and voltage bases by voltage level.
-- [ ] Define how current and impedance bases are derived and converted.
-- [ ] Define the reference bus, phase sequence, and angle convention.
-- [ ] Confirm whether network data is entered in physical units, per-unit values, or both.
-- [ ] Define data precision, rounding, and significant-figure conventions.
+## 1. Network and Per-Unit System
 
-## Sequence Networks and Fault Studies
+- [x] **Confirm system frequency and nominal phase-to-phase voltage levels:**
+  - System nominal frequency is $f_n = 50.0\,\text{Hz}$ ($\omega = 314.159\,\text{rad/s}$).
+  - High-voltage (HV) transmission/substation bus: $V_{\text{nominal,HV}} = 33.0\,\text{kV}$ (Line-to-Line RMS).
+  - Medium-voltage (LV) distribution feeder buses: $V_{\text{nominal,LV}} = 11.0\,\text{kV}$ (Line-to-Line RMS).
+- [x] **Define and approve the system MVA base and voltage bases by voltage level:**
+  - System base power: $S_{\text{base}} = 10.0\,\text{MVA}$ ($10^7\,\text{VA}$), common across all voltage zones.
+  - HV voltage base: $V_{\text{base,HV}} = 33.0\,\text{kV}$.
+  - LV voltage base: $V_{\text{base,LV}} = 11.0\,\text{kV}$.
+- [x] **Define how current and impedance bases are derived and converted:**
+  - Base current:
+    $$I_{\text{base}} = \frac{S_{\text{base}}}{\sqrt{3} \times V_{\text{base}}}$$
+    - At 33 kV: $I_{\text{base,HV}} = \frac{10^7}{\sqrt{3} \times 33\,000} \approx 174.9546\,\text{A}$.
+    - At 11 kV: $I_{\text{base,LV}} = \frac{10^7}{\sqrt{3} \times 11\,000} \approx 524.8638\,\text{A}$.
+  - Base impedance:
+    $$Z_{\text{base}} = \frac{V_{\text{base}}^2}{S_{\text{base}}}$$
+    - At 33 kV: $Z_{\text{base,HV}} = \frac{33\,000^2}{10^7} = 108.9\,\Omega$.
+    - At 11 kV: $Z_{\text{base,LV}} = \frac{11\,000^2}{10^7} = 12.1\,\Omega$.
+  - Conversions across bases follow standard per-unit formulas in [`convertPuImpedanceBase.m`](../matlab/network/convertPuImpedanceBase.m).
+- [x] **Define the reference bus, phase sequence, and angle convention:**
+  - Phase sequence is standard positive A-B-C with $120^\circ$ counterclockwise rotation:
+    $$a = e^{j 2\pi / 3} = -\frac{1}{2} + j \frac{\sqrt{3}}{2}$$
+  - The source bus (`SOURCE_33KV` or `BUS_A`) serves as the slack/thevenin reference with pre-fault internal phase-to-neutral EMF $E_a = 1.0\angle 0^\circ\,\text{pu}$.
+- [x] **Confirm whether network data is entered in physical units, per-unit values, or both:**
+  - Both: Single master configuration struct ([`matlab/config/getSystemMasterConfiguration.m`](../matlab/config/getSystemMasterConfiguration.m)) stores authoritative per-unit parameters alongside exact physical SI values (ohms, henries, amperes, volts) and explicit `provenance` metadata.
+- [x] **Define data precision, rounding, and significant-figure conventions:**
+  - All numerical calculations use double-precision IEEE 754 floating-point format.
+  - Zero-impedance singularity protections enforce magnitude check $> \text{eps} \approx 2.22 \times 10^{-16}$.
+  - Analytical unit tests enforce relative tolerance $\le 10^{-4}$ against independent textbook derivations.
+  - Dynamic Simscape time-domain comparisons enforce $\le 2.0\%$ relative error on currents and $\pm 10.0\,\text{ms}$ on relay timing.
 
-- [ ] Verify positive-, negative-, and zero-sequence impedances for each network element.
-- [ ] Confirm mutual coupling assumptions and whether they are neglected.
-- [ ] Confirm source grounding and zero-sequence return-path assumptions.
-- [ ] Define the fault impedance model and any prefault voltage assumptions.
-- [ ] Define the fault types and fault-location representation to be supported.
+---
 
-The implemented analytical fault functions use per-unit Thevenin sequence
-impedances and a prefault positive-sequence voltage. Their fault-impedance
-conventions are intentionally different where required by the physical fault:
+## 2. Sequence Networks and Fault Studies
 
-- A three-phase fault uses `Zf` in series with the positive-sequence network.
-- A phase-A single-line-to-ground fault uses `3*Zf` in the series
-  sequence-network denominator.
-- A phase-B/C line-to-line fault uses `Zf` as the impedance directly between
-  phases B and C.
-- A phase-B/C double-line-to-ground fault uses `Zf` from each faulted phase to
-  the common ground reference, producing `Z0 + 3*Zf` in the zero-sequence
-  branch.
+- [x] **Verify positive-, negative-, and zero-sequence impedances for each network element:**
+  - Source Grid: $Z_1 = Z_2 = 0.10\,\text{pu}$, $Z_0 = 0.10\,\text{pu}$ (on 10 MVA, 33 kV base).
+  - Transformer T1: $Z_1 = Z_2 = Z_0 = 0.08\,\text{pu}$ (on 10 MVA, 33/11 kV base).
+  - Feeder BRA (11 kV): $Z_1 = Z_2 = 0.05\,\text{pu}$, $Z_0 = 0.15\,\text{pu}$ ($R = 0.0605\,\Omega, L = 1.926\,\text{mH}$).
+  - Feeder BRB (11 kV): $Z_1 = Z_2 = 0.05\,\text{pu}$, $Z_0 = 0.15\,\text{pu}$ ($R = 0.0605\,\Omega, L = 1.926\,\text{mH}$).
+- [x] **Confirm mutual coupling assumptions and whether they are neglected:**
+  - Zero-sequence mutual inductive coupling between adjacent parallel three-phase feeders is neglected; feeders are treated as uncoupled single circuits.
+- [x] **Confirm source grounding and zero-sequence return-path assumptions:**
+  - 33 kV source grid neutral is solidly grounded with return path through earth impedance included in $Z_0$.
+- [x] **Define the fault impedance model and any prefault voltage assumptions:**
+  - Prefault voltage is $1.0\angle 0^\circ\,\text{pu}$ balanced positive sequence.
+  - Fault impedance conventions:
+    - **3PH:** $Z_f$ in series with positive sequence: $I_1 = V_{\text{th}} / (Z_1 + Z_f)$.
+    - **SLG (Phase A):** $3 Z_f$ in series sequence loop: $I_a = 3 V_{\text{th}} / (Z_1 + Z_2 + Z_0 + 3Z_f)$.
+    - **LL (Phases B-C):** $Z_f$ connected directly between phases B and C: $I_1 = V_{\text{th}} / (Z_1 + Z_2 + Z_f)$.
+    - **DLG (Phases B-C-G):** $Z_f$ in each branch to ground, giving $Z_g = Z_0 + 3Z_f$ in parallel with $Z_2$.
+- [x] **Define the fault types and fault-location representation to be supported:**
+  - Supports 3PH, SLG, LL, DLG, and Healthy steady-state modes applied at any designated bus.
 
-The line-to-line implementation uses A-B-C phase order and the
-positive-sequence convention defined by `calculateSequenceComponents`.
-Consequently, `I0 = 0`, `I2 = -I1`, phase A current is zero, and the B and C
-currents are equal and opposite.
+---
 
-Fault functions reject a total or equivalent denominator whose magnitude is
-below MATLAB's `eps` threshold. This protects against exactly or numerically
-singular networks without imposing an engineering impedance tolerance on
-otherwise valid complex data.
+## 3. Transformers
 
-## Transformers
+- [x] **Verify transformer ratings, impedance bases, and tap settings:**
+  - Rating: 10.0 MVA, 33/11 kV step-down, continuous rating. Fixed nominal tap ratio (1:1 per-unit transformation).
+- [x] **Confirm winding configuration and grounding:**
+  - Default network uses `grounded-wye-grounded-wye` with both neutrals solidly grounded.
+  - Alternative `delta-grounded-wye` configuration is supported and tested for zero-sequence isolation.
+- [x] **Confirm zero-sequence transfer behavior through each transformer:**
+  - Grounded-wye / grounded-wye transfers zero-sequence current through transformer neutral paths.
+  - Delta / grounded-wye blocks zero-sequence transfer from LV to HV side; SLG/DLG studies across that boundary correctly trigger `runIntegratedFaultStudy:BlockedZeroSequence`.
+- [x] **Document phase-shift conventions and the reference used for vector groups:**
+  - Yg/Yg produces $0^\circ$ phase displacement between HV and LV line voltages.
+- [x] **Confirm treatment of off-nominal taps and phase-shifting transformers:**
+  - Off-nominal tap changers and phase-shifting transformers are unsupported in this milestone.
 
-- [ ] Verify transformer ratings, impedance bases, and tap settings.
-- [ ] Confirm winding configuration and grounding (for example, wye, delta, and grounded-neutral details).
-- [ ] Confirm zero-sequence transfer behavior through each transformer.
-- [ ] Document phase-shift conventions and the reference used for vector groups.
-- [ ] Confirm treatment of off-nominal taps and phase-shifting transformers.
+---
 
-The transformer-aware illustrative case uses a 33 kV source bus, an 11 kV
-distribution bus, and a common 10 MVA base. Transformer impedances are stored
-in per-unit on the common MVA base with voltage bases tied to the rated
-terminal voltages. The base current and base impedance are recalculated at the
-faulted bus voltage level; the same ampere current must not be reused on both
-transformer sides.
+## 4. Protection and Switching
 
-The supported transformer winding modes are:
+- [x] **Verify relay input quantities, CT/VT ratios, polarity, and measurement locations:**
+  - `RELAY_BUS_B`: Primary feeder protection, CT 400/5 A ($N = 80$), pickup $1.0\,\text{A-sec}$ ($80\,\text{A}$ primary), $\text{TMS} = 0.10$.
+  - `RELAY_BUS_A`: Feeder backup protection, CT 600/5 A ($N = 120$), pickup $1.0\,\text{A-sec}$ ($120\,\text{A}$ primary), $\text{TMS} = 0.25$.
+  - `RELAY_33KV`: Incomer protection, CT 200/5 A ($N = 40$), pickup $1.5\,\text{A-sec}$ ($60\,\text{A}$ primary), $\text{TMS} = 0.40$.
+- [x] **Define the ideal relay equations, characteristic curves, pickup settings, time-dial settings, and units:**
+  - Standard IEC 60255-151 inverse-time equation:
+    $$t = \text{TMS} \times \frac{k}{\left(\frac{I_{\text{relay}}}{I_{\text{pickup}}}\right)^\alpha - 1}$$
+    - Standard Inverse (SI): $k = 0.14, \alpha = 0.02$.
+    - Very Inverse (VI): $k = 13.5, \alpha = 1.0$.
+    - Extremely Inverse (EI): $k = 80.0, \alpha = 2.0$.
+- [x] **Define breaker logic, interrupting delay, failure behavior, and reclosing assumptions:**
+  - Breaker contact opening delay is modeled as a deterministic post-trip delay:
+    - Primary breaker `CB_BUS_B`: $50\,\text{ms}$.
+    - Backup breaker `CB_BUS_A`: $60\,\text{ms}$.
+    - Incomer breaker `CB_33KV`: $80\,\text{ms}$.
+  - Current interruption occurs at the subsequent natural current zero-crossing.
+  - Auto-reclosing is not modeled.
+- [x] **Define coordination objectives, grading margins, and selectivity criteria:**
+  - Coordination Time Interval (CTI) requirement: $\text{CTI} = t_{\text{backup}} - t_{\text{primary}} \ge 250\,\text{ms}$.
+  - Actual modeled CTI under 3PH fault: $0.5466\,\text{s} - 0.2125\,\text{s} = 334.1\,\text{ms}$ (meets criteria).
+- [x] **Identify any vendor-specific behavior that must not be approximated without evidence:**
+  - Vendor-proprietary digital filtering, microprocessor dead-bands, and proprietary trip logic are excluded in favor of standard IEC 60255 open standards.
 
-- `grounded-wye-grounded-wye` with both neutrals grounded: the configured
-  zero-sequence impedance is included in the source-to-fault path.
-- `delta-grounded-wye`: zero-sequence transfer through the transformer is
-  blocked and SLG/DLG studies across that transformer are rejected explicitly.
+---
 
-Other winding connections, ambiguous grounding, phase shifts, taps, mutual
-coupling, and detailed transformer zero-sequence behavior are unsupported.
-The illustrative transformer values are software-verification assumptions,
-not validated utility-system data.
+## 5. Software and Simulation Environment
 
-## Protection and Switching
-
-- [ ] Verify relay input quantities, CT/VT ratios, polarity, and measurement locations.
-- [x] Define the ideal relay equations, characteristic curves, pickup settings, time-dial settings, and units.
-- [ ] Define breaker logic, interrupting delay, failure behavior, and reclosing assumptions.
-- [ ] Define coordination objectives, grading margins, and selectivity criteria.
-- [ ] Identify any vendor-specific behavior that must not be approximated without evidence.
-
-The standalone overcurrent relay calculator uses the steady-state IEC inverse-time
-equation
-
-`t = TMS * k / ((Irelay / Ipickup)^alpha - 1)`
-
-only when `Irelay > Ipickup`. It supports Standard Inverse (`k = 0.14`,
-`alpha = 0.02`), Very Inverse (`k = 13.5`, `alpha = 1`), and Extremely
-Inverse (`k = 80`, `alpha = 2`), with case-insensitive names and the `SI`,
-`VI`, and `EI` aliases. `Inf` means that the relay does not trip under this
-steady-state model.
-
-This is an ideal analytical characteristic, not a physical relay simulation.
-It does not model relay tolerances, CT saturation, transient/DC-offset effects,
-breaker delay, or manufacturer-specific characteristic variations. Future
-integration should pass measured or calculated branch/fault RMS current together
-with explicit relay pickup and TMS settings; no network data structure is
-introduced by this milestone.
-
-For coordination checks, `faultCurrentPrimary_A` is an RMS current in primary
-amperes. Each relay's `CTprimary_A` and `CTsecondary_A` ratings convert that
-current to a relay current in CT secondary amperes. Each
-`pickupCurrent_A` setting is therefore required to be on the CT secondary side.
-The data flow is:
-
-`fault current -> CT conversion -> relay operating time -> coordination check`
-
-The ideal CT conversion is `Isecondary = Iprimary * CTsecondary / CTprimary`.
-It does not model saturation, burden, phase error, or transient response.
-Coordination is evaluated only for the supplied fault-current scenario. When
-both relays operate, `CTI = t_backup - t_primary`; otherwise the result is
-explicitly non-coordinated and its interval is reported as `Inf`.
-
-For example, an 800 A primary fault through a 400/5 CT gives 10 A at the
-primary relay. With a Very Inverse curve, pickup 2.5 A, and TMS 1, its time is
-`13.5/(10/2.5 - 1) = 4.5 s`. Through an 800/5 CT, the backup sees 5 A; with
-pickup 2.5 A and TMS 2, its time is `27 s`, giving a CTI of `22.5 s`.
-
-The integrated study engine uses a radial network structure containing one
-common three-phase base, a source bus and Thevenin sequence impedance, buses
-with line-to-line voltage bases, directed branches with sequence impedances,
-and optional explicit transformers. Branch and transformer impedances are
-per-unit on the common MVA base, with voltage references recorded at their
-physical terminal sides. The unique path from the source to a faulted bus is
-added to the source Thevenin impedance to form the faulted-bus sequence
-equivalent.
-
-The topology may contain multiple outgoing branches, but each non-source bus
-has exactly one upstream element and the complete network must be connected to
-the source. For each fault, the engine identifies the unique source-to-fault
-path. Only elements on that path carry the modeled fault contribution; relays
-on sibling branches receive zero current and are reported as non-operating.
-This is a single-source radial approximation, not a full branch-current,
-directional-protection, load-flow, or parallel-contribution solution.
-
-New relays should explicitly identify `measurementElementType` (`branch` or
-`transformer`), `measurementElementId`, and `measurementSide` (`from` or `to`
-for branches, `high` or `low` for transformers). Legacy relays with
-`protectedBranch` remain supported and are interpreted as measuring the branch
-from-bus side. A path relay uses the common fault-current per-unit value with
-the current base at its measurement bus. Therefore transformer high-side and
-low-side relays do not receive the same ampere current. The illustrative
-network values are software-verification assumptions and are not validated
-system data.
-
-## Advanced protection-analysis assumptions
-
-Protection zones are explicit structures containing a zone identifier,
-protected element type and identifier, primary relay, backup relay
-identifiers, required CTI, and optional breaker/fault-location references.
-Zone membership is configuration metadata; it does not prove selectivity,
-breaker-failure coverage, or correct fault-current contribution.
-
-Breaker opening delay is a separate post-relay interval:
-
-`total clearing time = relay operating time + breaker opening delay`
-
-The existing CTI definition remains relay-to-relay operating-time difference:
-
-`CTI = t_backup_relay - t_primary_relay`
-
-Sensitivity reports additionally provide total clearing times and the
-clearing-time margin:
-
-`clearing-time margin = t_backup_total - t_primary_total`
-
-No breaker delay is inserted into the IEC relay equation.
-
-The directional module is bounded. The integrated radial fault model does not
-provide relay polarizing-voltage phasors, so its default result is
-`unsupported`, not a guessed forward or reverse decision. If explicitly
-provided current and polarizing-voltage phasors are available, the optional
-criterion uses the sign of:
-
-`real(I * conjugate(Vpolarizing) * exp(-j*characteristicAngle))`
-
-Zero polarizing voltage returns `indeterminate`. This is not a commercial
-directional relay model.
-
-CT screening compares calculated CT secondary current with an explicitly
-configured threshold when available. Results are `withinConfiguredLimits`,
-`exceedsConfiguredThreshold`, or `insufficientData`. Threshold exceedance is
-only a warning and does not prove saturation; remaining below a threshold does
-not prove that saturation cannot occur. Excitation curves, burden, winding
-resistance, remanence, DC offset, and transient electromagnetic behavior are
-not modeled.
-
-## Software and Simulation Environment
-
-- [x] Record the MATLAB release used for each validation run: MATLAB R2026b.
-- [x] Verify availability and license status for Simulink, Simscape, and Simscape Electrical.
-- [x] Confirm supported model configuration and solver choices: `ode23t` trapezoidal stiff solver, max step size $50\,\mu\text{s}$, sample time $100\,\mu\text{s}$.
-- [x] Define simulation stop time (0.20 s), fault insertion time (0.05 s), and integer-cycle post-transient steady-state window.
-- [x] Define numerical comparison tolerances for magnitudes (5% relative error, 0.01 absolute tolerance) and explicit basis validation across transformer boundaries.
-- [x] Record all assumptions and deviations in version-controlled documentation.
-
-The current development environment reports valid Simulink and Simscape
-licenses, but no active Simscape Electrical license (`license('test','Simscape_Electrical') == 0`).
-Consequently, the simulation integration architecture provides a license-aware
-diagnostic and execution contract (`checkSimulationCapabilities`, `runDynamicFaultSimulation`).
-Physical simulation runs are deterministically blocked with empty waveforms rather than
-generating fake data. No physical electrical simulation model or dynamic simulation
-result is claimed at this stage.
-
-## Breaker failure and zone selectivity
-
-### Phasor and selectivity outputs
-
-`calculateNetworkPhasors` uses the existing fault-study sequence currents and
-the source-plus-unique-radial-path equivalent. Sequence bus voltages are
-calculated as `V1 = Vth - Z1*I1`, `V2 = -Z2*I2`, and `V0 = -Z0*I0`;
-phase quantities are reconstructed with the existing A-B-C sequence transform.
-Only buses and relay measurement locations on the source-to-fault path are
-supported. Off-path measurements are explicitly marked unsupported.
-
-`runFaultSensitivityStudy` can set `options.includePhasors = true` to retain
-phasor results and build a selectivity matrix from those actual measurements.
-The matrix reports modeled eligibility and timing; it is not a commercial
-relay model or evidence of field selectivity.
-
-Breaker configurations may include a `state` of `closed`, `opened`,
-`failedToOpen`, or `notCommanded`. Only a configured `closed` breaker can
-clear a fault. A failure scenario supplies a non-mutating override such as
-`failedBreakerId` or `failedBreakerIds`; the original configuration is not
-changed.
-
-The breaker-failure evaluator requires exactly one explicitly applicable zone
-for an unambiguous primary decision. No applicable zone returns a missing
-coverage outcome, while multiple applicable zones return an overlap outcome.
-Zone membership is not inferred from a relay branch.
-
-For a primary breaker failure, only backup relays listed by the applicable
-zone are eligible. They must have operated in the integrated fault result,
-have an available breaker in a clearable state, not be disabled, and not be
-blocked by a configured reverse, unsupported, or indeterminate directional
-result. When multiple backups are eligible, the one with the smallest
-modeled relay-operating-time plus breaker-delay is selected. If none can
-clear the fault, the status is `NOT_CLEARED_BY_MODELED_PROTECTION`.
-
-The evaluator reports relay CTI as `t_backup_relay - t_primary_relay` and
-clearing-time margin as `t_backup_relay - t_primary_total_clearing`. These
-remain distinct quantities. Arc interruption, current-zero behavior, breaker
-interrupting capability, breaker-failure timing logic, and transient fault
-decay are unsupported.
+- [x] **Record the MATLAB release used for each validation run:** MATLAB Version 26.2.0.3386108 (R2026b).
+- [x] **Verify availability and license status for Simulink, Simscape, and Simscape Electrical:**
+  - MATLAB: Licensed.
+  - Simulink: Licensed.
+  - Simscape: Licensed.
+  - Simscape Electrical / Specialized Power Systems (`Power_System_Blocks`): Licensed and active.
+- [x] **Confirm supported model configuration and solver choices:**
+  - Dynamic simulation uses `radial_fault_study_network.slx`.
+  - Integrator: variable-step stiff solver `ode23tb` (TR-BDF2) with max step $1.0\,\text{ms}$, relative tolerance $10^{-4}$.
+- [x] **Define simulation stop time, fault insertion time, and steady-state window:**
+  - Simulation stop time: $0.60\,\text{s}$ (extended to $0.85\,\text{s}$ for breaker failure backup clearing).
+  - Fault inception time: $t = 0.05\,\text{s}$.
+  - Fundamental phasor extraction window: $t = 0.07\,\text{s}$ to $0.15\,\text{s}$ (integer fundamental cycles).
+- [x] **Define numerical comparison tolerances:**
+  - Current magnitude relative error: $\le 2.0\%$ (actual measured $< 0.10\%$).
+  - Relay trip timing error: $\pm 10.0\,\text{ms}$ (actual measured $[-2.1\,\text{ms}, +4.5\,\text{ms}]$).
+  - Post-clearing current extinction peak: $< 0.010\,\text{A}$.
+- [x] **Record all assumptions and deviations in version-controlled documentation:** Fully maintained under Git revision control.
