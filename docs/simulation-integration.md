@@ -277,7 +277,7 @@ The relay protection layer integrates the validated Simscape physical fault simu
    - **`ZONE_FEEDER_BRB`:** Protects Feeder BRB (`applicableFaultedBuses = {'BUS_B'}`). Primary: `RELAY_BUS_B` (`CB_BUS_B`), Backups: `RELAY_BUS_A`, `RELAY_33KV`.
    - **`ZONE_TRANSFORMER_T1`:** Protects Transformer T1 (`applicableFaultedBuses = {'BUS_11KV'}`). Primary: `RELAY_33KV` (`CB_33KV`), Backups: None.
    - **`ZONE_FEEDER_BRA`:** Protects Feeder BRA (`applicableFaultedBuses = {'BUS_A'}`). Primary: `RELAY_33KV` (`CB_33KV`), Backups: None.
-   - **Coordination Pairs:** `PAIR_B_A` and `PAIR_A_33KV` have `applicableFaultedBuses = {'BUS_B'}`. For Bus A faults, no local relay sees the fault, so `RELAY_33KV` clears in ~1.07 s (tripping the entire transformer), and breaker failure of `CB_33KV` has no remote backup configured.
+   - **Coordination Pairs:** `PAIR_B_A` and `PAIR_A_33KV` have `applicableFaultedBuses = {'BUS_B'}`. For Bus A faults, no local relay sees the fault, so `RELAY_33KV` clears as primary (3PH: 760.67 A, 1.0747 s; SLG: 664.38 A, 1.1367 s; LL: 658.76 A, 1.1408 s; DLG: 721.74 A, 1.0979 s; tripping the entire transformer), and breaker failure of `CB_33KV` has no remote backup configured.
 
 ### B. IEC Curve Mathematical Formulations
 Overcurrent operating times are calculated according to IEC 60255 standard curves:
@@ -302,34 +302,34 @@ To prevent dangerous miscoordination, two distinct metrics are evaluated:
 
 | Operating Mode | Relay ID | Primary Current (A) | CT Secondary Current (A) | Multiple $M$ | Operating Time (s) | Total Clearing Time (s) | Status |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **3PH** | `RELAY_BUS_B` | 1872.22 | 23.40 | 23.40 | **0.2151** | **0.2651** | `TRIPPED` |
-| | `RELAY_BUS_A` | 1872.22 | 15.60 | 15.60 | **0.6196** | **0.6796** | `TRIPPED` |
-| | `RELAY_33KV` | 624.07 | 15.60 | 10.40 | **1.1678** | **1.2478** | `TRIPPED` |
-| **SLG** | `RELAY_BUS_B` | 655.37 | 8.19 | 8.19 | **0.3259** | **0.3759** | `TRIPPED` |
-| | `RELAY_BUS_A` | 655.37 | 5.46 | 5.46 | **1.0134** | **1.0734** | `TRIPPED` |
-| | `RELAY_33KV` | 218.46 | 5.46 | 3.64 | **2.1389** | **2.2189** | `TRIPPED` |
-| **LL** | `RELAY_BUS_B` | 938.13 | 11.73 | 11.73 | **0.2774** | **0.3274** | `TRIPPED` |
-| | `RELAY_BUS_A` | 938.13 | 7.82 | 7.82 | **0.8336** | **0.8936** | `TRIPPED` |
-| | `RELAY_33KV` | 312.71 | 7.82 | 5.21 | **1.6682** | **1.7482** | `TRIPPED` |
-| **DLG** | `RELAY_BUS_B` | 1275.83 | 15.95 | 15.95 | **0.2458** | **0.2958** | `TRIPPED` |
-| | `RELAY_BUS_A` | 1275.83 | 10.63 | 10.63 | **0.7230** | **0.7830** | `TRIPPED` |
-| | `RELAY_33KV` | 425.28 | 10.63 | 7.09 | **1.4019** | **1.4819** | `TRIPPED` |
-| **HEALTHY** | `RELAY_BUS_B` | 53.02 | 0.66 | 0.66 | $\mathbf{\infty}$ | $\mathbf{\infty}$ | `BELOW_PICKUP` |
-| | `RELAY_BUS_A` | 53.02 | 0.44 | 0.44 | $\mathbf{\infty}$ | $\mathbf{\infty}$ | `BELOW_PICKUP` |
-| | `RELAY_33KV` | 17.67 | 0.44 | 0.29 | $\mathbf{\infty}$ | $\mathbf{\infty}$ | `BELOW_PICKUP` |
+| **3PH** | `RELAY_BUS_B` | 1874.45 | 23.43 | 23.43 | **0.2150** | **0.2650** | `TRIPPED` |
+| | `RELAY_BUS_A` | 1874.45 | 15.62 | 15.62 | **0.6194** | **0.6794** | `TRIPPED` |
+| | `RELAY_33KV` | 624.84 | 15.62 | 10.41 | **1.1672** | **1.2472** | `TRIPPED` |
+| **SLG** | `RELAY_BUS_B` | 1513.72 | 18.92 | 18.92 | **0.2311** | **0.2811** | `TRIPPED` |
+| | `RELAY_BUS_A` | 1513.72 | 12.61 | 12.61 | **0.6730** | **0.7330** | `TRIPPED` |
+| | `RELAY_33KV` | 504.68 | 12.62 | 8.41 | **1.2870** | **1.3670** | `TRIPPED` |
+| **LL** | `RELAY_BUS_B` | 1623.13 | 20.29 | 20.29 | **0.2255** | **0.2755** | `TRIPPED` |
+| | `RELAY_BUS_A` | 1623.13 | 13.53 | 13.53 | **0.6545** | **0.7145** | `TRIPPED` |
+| | `RELAY_33KV` | 541.13 | 13.53 | 9.02 | **1.2453** | **1.3253** | `TRIPPED` |
+| **DLG** | `RELAY_BUS_B` | 1743.04 | 21.79 | 21.79 | **0.2199** | **0.2699** | `TRIPPED` |
+| | `RELAY_BUS_A` | 1743.04 | 14.53 | 14.53 | **0.6366** | **0.6966** | `TRIPPED` |
+| | `RELAY_33KV` | 581.04 | 14.53 | 9.68 | **1.2054** | **1.2854** | `TRIPPED` |
+| **HEALTHY** | `RELAY_BUS_B` | 52.49 | 0.66 | 0.66 | $\mathbf{\infty}$ | $\mathbf{\infty}$ | `BELOW_PICKUP` |
+| | `RELAY_BUS_A` | 52.49 | 0.44 | 0.44 | $\mathbf{\infty}$ | $\mathbf{\infty}$ | `BELOW_PICKUP` |
+| | `RELAY_33KV` | 17.50 | 0.44 | 0.29 | $\mathbf{\infty}$ | $\mathbf{\infty}$ | `BELOW_PICKUP` |
 
 ### E. Primary / Backup Coordination Results
 
 | Scenario | Pair ID | Primary Relay | Backup Relay | $t_{\text{pri}}$ (s) | $t_{\text{bku}}$ (s) | CTI (s) | Min CTI (s) | Margin (s) | Coordination Status |
 | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **3PH** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | 0.2151 | 0.6196 | **0.4045** | 0.250 | **0.3545** | `COORDINATED` |
-| | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | 0.6196 | 1.1678 | **0.5482** | 0.300 | **0.4882** | `COORDINATED` |
-| **SLG** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | 0.3259 | 1.0134 | **0.6875** | 0.250 | **0.6375** | `COORDINATED` |
-| | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | 1.0134 | 2.1389 | **1.1255** | 0.300 | **1.0655** | `COORDINATED` |
-| **LL** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | 0.2774 | 0.8336 | **0.5562** | 0.250 | **0.5062** | `COORDINATED` |
-| | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | 0.8336 | 1.6682 | **0.8345** | 0.300 | **0.7745** | `COORDINATED` |
-| **DLG** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | 0.2458 | 0.7230 | **0.4771** | 0.250 | **0.4271** | `COORDINATED` |
-| | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | 0.7230 | 1.4019 | **0.6790** | 0.300 | **0.6190** | `COORDINATED` |
+| **3PH** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | 0.2150 | 0.6194 | **0.4043** | 0.250 | **0.3543** | `COORDINATED` |
+| | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | 0.6194 | 1.1672 | **0.5479** | 0.300 | **0.4879** | `COORDINATED` |
+| **SLG** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | 0.2311 | 0.6730 | **0.4418** | 0.250 | **0.3918** | `COORDINATED` |
+| | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | 0.6730 | 1.2870 | **0.6140** | 0.300 | **0.5540** | `COORDINATED` |
+| **LL** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | 0.2255 | 0.6545 | **0.4290** | 0.250 | **0.3790** | `COORDINATED` |
+| | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | 0.6545 | 1.2453 | **0.5908** | 0.300 | **0.5308** | `COORDINATED` |
+| **DLG** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | 0.2199 | 0.6366 | **0.4167** | 0.250 | **0.3667** | `COORDINATED` |
+| | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | 0.6366 | 1.2054 | **0.5688** | 0.300 | **0.5088** | `COORDINATED` |
 | **HEALTHY** | `PAIR_B_A` | `RELAY_BUS_B` | `RELAY_BUS_A` | $\infty$ | $\infty$ | $\infty$ | 0.250 | $\infty$ | `NEITHER_OPERATES` |
 | | `PAIR_A_33KV` | `RELAY_BUS_A` | `RELAY_33KV` | $\infty$ | $\infty$ | $\infty$ | 0.300 | $\infty$ | `NEITHER_OPERATES` |
 

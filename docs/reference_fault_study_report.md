@@ -25,7 +25,7 @@
 - **Protection Zones & Scoping:**
   - `ZONE_FEEDER_BRB`: Feeder BRB / Bus B (`applicableFaultedBuses={'BUS_B'}`), primary `RELAY_BUS_B`, backups `RELAY_BUS_A` and `RELAY_33KV`.
   - `ZONE_TRANSFORMER_T1`: Transformer T1 (`applicableFaultedBuses={'BUS_11KV'}`), primary `RELAY_33KV`, backups none.
-  - `ZONE_FEEDER_BRA`: Feeder BRA / Bus A (`applicableFaultedBuses={'BUS_A'}`), primary `RELAY_33KV`, breaker `CB_33KV`, backups none. Bus A faults are cleared exclusively by `RELAY_33KV` in ~1.07 s; `CB_33KV` failure has no downstream backup.
+  - `ZONE_FEEDER_BRA`: Feeder BRA / Bus A (`applicableFaultedBuses={'BUS_A'}`), primary `RELAY_33KV`, breaker `CB_33KV`, backups none. Bus A faults are cleared exclusively by `RELAY_33KV` (3PH: 760.67 A in 1.0747 s; SLG: 664.38 A in 1.1367 s; LL: 658.76 A in 1.1408 s; DLG: 721.74 A in 1.0979 s); `CB_33KV` failure has no downstream backup.
   - Coordination pairs `PAIR_B_A` and `PAIR_A_33KV` apply strictly to `BUS_B` fault scenarios.
 
 ---
