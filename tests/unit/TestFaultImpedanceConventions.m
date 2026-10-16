@@ -142,15 +142,15 @@ classdef TestFaultImpedanceConventions < matlab.unittest.TestCase
                 'protectedBranch', 'BR_11KV');
             pairs = struct([]);
 
-            % SLG through Delta/Yg must error:
-            testCase.verifyError( ...
-                @() runIntegratedFaultStudy(netDelta, scenariosSLG, relays, pairs), ...
-                'runIntegratedFaultStudy:BlockedZeroSequence');
+            % SLG through Delta/Yg succeeds with zero-sequence path formed by grounded-wye neutral:
+            resSLG_delta = runIntegratedFaultStudy(netDelta, scenariosSLG, relays, pairs);
+            testCase.verifyEqual(numel(resSLG_delta), 1);
+            testCase.verifyTrue(resSLG_delta.faultCurrentMagnitude_A > 0);
 
-            % DLG through Delta/Yg must error:
-            testCase.verifyError( ...
-                @() runIntegratedFaultStudy(netDelta, scenariosDLG, relays, pairs), ...
-                'runIntegratedFaultStudy:BlockedZeroSequence');
+            % DLG through Delta/Yg succeeds:
+            resDLG_delta = runIntegratedFaultStudy(netDelta, scenariosDLG, relays, pairs);
+            testCase.verifyEqual(numel(resDLG_delta), 1);
+            testCase.verifyTrue(resDLG_delta.faultCurrentMagnitude_A > 0);
 
             % 3PH through Delta/Yg does not involve zero-sequence and must succeed:
             res3PH = runIntegratedFaultStudy(netDelta, scenarios3PH, relays, pairs);

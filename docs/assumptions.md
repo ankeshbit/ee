@@ -70,10 +70,10 @@ This document records the approved engineering assumptions, mathematical convent
   - Alternative `delta-grounded-wye` configuration is supported and tested for zero-sequence isolation.
 - [x] **Confirm zero-sequence transfer behavior through each transformer:**
   - Grounded-wye / grounded-wye transfers zero-sequence current through transformer neutral paths.
-  - Delta / grounded-wye transformer zero-sequence transfer and grounded-wye zero-sequence source behavior across boundaries are currently unsupported in the analytical solver; SLG/DLG studies across that boundary trigger `runIntegratedFaultStudy:BlockedZeroSequence`.
+  - Delta / grounded-wye transformer: For faults on the grounded-wye side, the zero-sequence network seen from the fault is $Z_0 = \sum Z_{0,\text{downstream}} + Z_{0,\text{transformer}}$, where upstream source and delta-side impedances are excluded ($I_{0,\text{HV}} = 0$). Only paths with no grounded neutral anywhere trigger `runIntegratedFaultStudy:NoGroundedNeutral`.
 - [x] **Document phase-shift conventions and the reference used for vector groups:**
   - Yg/Yg produces $0^\circ$ phase displacement between HV and LV line voltages.
-  - Delta-wye sequence phase shift ($\pm 30^\circ$) and resulting unbalanced fault line currents across the boundary (e.g., $2 I_1$ peak phase current during LL faults) are unmodeled; unbalanced fault studies across delta-wye boundaries with HV-side relays trigger `runIntegratedFaultStudy:UnsupportedTransformerPhaseShift`.
+  - Delta-grounded-wye adopts the Dyn11 convention (HV leads LV by $+30^\circ$). Unbalanced fault line currents on the HV side are synthesized from sequence components: $I_{0,\text{HV}} = 0$, $I_{1,\text{HV}} = I_1 e^{+j 30^\circ}$, $I_{2,\text{HV}} = I_2 e^{-j 30^\circ}$. For SLG on LV side, one HV phase is $\approx 0$ and the other two are equal and opposite with magnitude $|I_{a,\text{LV}}|/\sqrt{3}$; for LL on LV side, peak HV line current is $2 I_1$ while peak LV line current is $\sqrt{3} I_1$.
 - [x] **Confirm treatment of off-nominal taps and phase-shifting transformers:**
   - Off-nominal tap changers and phase-shifting transformers are unsupported in this milestone.
 

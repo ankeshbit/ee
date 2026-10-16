@@ -34,11 +34,11 @@ studyResults = repmat(struct( ...
 
 for scenarioIndex = 1:numel(scenarios)
     scenario = scenarios(scenarioIndex);
-    [pathElements, pathBranches, Z1, Z2, Z0, zeroSequenceSupported] = ...
+    [pathElements, pathBranches, Z1, Z2, Z0, hasGroundedNeutral] = ...
         pathToBus(network, char(scenario.faultedBus));
-    if ~zeroSequenceSupported && isZeroSequenceFault(scenario.faultType)
-        error('runIntegratedFaultStudy:BlockedZeroSequence', ...
-            'Zero-sequence current calculation across delta-grounded-wye transformer boundary is unsupported for %s.', ...
+    if ~hasGroundedNeutral && isZeroSequenceFault(scenario.faultType)
+        error('runIntegratedFaultStudy:NoGroundedNeutral', ...
+            'Zero-sequence current calculation cannot proceed because there is no grounded neutral on the fault path for %s.', ...
             char(scenario.faultedBus));
     end
     Vth = network.source.Vth_pu;
@@ -53,7 +53,7 @@ for scenarioIndex = 1:numel(scenarios)
         extractFaultCurrent(fault, char(scenario.faultType));
     faultCurrent_A = faultCurrent_pu * bases.IbaseA;
     relayResults = evaluateRelays( ...
-        relays, pathElements, faultCurrent_pu, network, char(scenario.faultType));
+        relays, pathElements, faultCurrent_pu, network, char(scenario.faultType), sequenceCurrents_pu);
     coordinationResults = evaluatePairs( ...
         coordinationPairs, relayResults, relays, char(scenario.faultedBus));
 
@@ -110,7 +110,10 @@ switch lower(strtrim(faultType))
 end
 end
 
-function relayResults = evaluateRelays(relays, pathElements, faultCurrent_pu, network, faultType)
+function relayResults = evaluateRelays(relays, pathElements, faultCurrent_pu, network, faultType, sequenceCurrents_pu)
+% Dyn11 vector group: High-voltage leads Low-voltage by +30 deg (+pi/6 rad) in positive sequence
+DELTA_WYE_PHASE_SHIFT_RAD = pi / 6;
+
 relayResults = repmat(struct( ...
     'relayId', '', 'protectedBranch', '', 'measurementElementType', '', ...
     'measurementElementId', '', 'measurementSide', '', ...
@@ -126,17 +129,19 @@ for relayIndex = 1:numel(relays)
     pathIndex = find(strcmp({pathElements.type}, elementType) & ...
         strcmp({pathElements.id}, elementId), 1);
     onPath = ~isempty(pathIndex);
-    if onPath && nargin >= 5 && ~isThreePhaseFault(faultType) && isfield(pathElements, 'windingConnection')
+
+    isHvSide = false;
+    if onPath && isfield(pathElements, 'windingConnection')
         xfmrIndices = find(strcmp({pathElements.type}, 'transformer') & ...
             cellfun(@(wc) contains(lower(wc), 'delta'), {pathElements.windingConnection}));
         if ~isempty(xfmrIndices)
             deltaIdx = xfmrIndices(1);
             if pathIndex < deltaIdx || (pathIndex == deltaIdx && strcmp(side, 'high'))
-                error('runIntegratedFaultStudy:UnsupportedTransformerPhaseShift', ...
-                    'Unbalanced fault calculation across delta-wye transformer boundary is unsupported for relay %s.', relay.id);
+                isHvSide = true;
             end
         end
     end
+
     measurementBus = '';
     if onPath
         measurementBus = measurementBusForElement( ...
@@ -146,9 +151,21 @@ for relayIndex = 1:numel(relays)
         bus = network.buses(strcmp({network.buses.id}, measurementBus));
         measurementBase = calculateBaseValues( ...
             network.base.SbaseVA, bus.VbaseV);
-        relayCurrent = abs(faultCurrent_pu) * measurementBase.IbaseA;
+        if nargin >= 6 && ~isempty(sequenceCurrents_pu)
+            if isHvSide
+                I0_HV = 0;
+                I1_HV = sequenceCurrents_pu(2) * exp(1i * DELTA_WYE_PHASE_SHIFT_RAD);
+                I2_HV = sequenceCurrents_pu(3) * exp(-1i * DELTA_WYE_PHASE_SHIFT_RAD);
+                I_phase_HV = sequenceToPhase([I0_HV; I1_HV; I2_HV]);
+                relayCurrent = max(abs(I_phase_HV)) * measurementBase.IbaseA;
+            else
+                I_phase = sequenceToPhase(sequenceCurrents_pu);
+                relayCurrent = max(abs(I_phase)) * measurementBase.IbaseA;
+            end
+        else
+            relayCurrent = abs(faultCurrent_pu) * measurementBase.IbaseA;
+        end
         measurementVoltageBaseV = bus.VbaseV;
-
     else
         relayCurrent = 0;
         measurementVoltageBaseV = [];
@@ -258,58 +275,16 @@ function relay = findRelay(relayResults, relayId)
 relay = relayResults(strcmp({relayResults.relayId}, relayId));
 end
 
-function [pathElements, pathBranches, Z1, Z2, Z0, zeroSequenceSupported] = ...
+function [pathElements, pathBranches, Z1, Z2, Z0, hasGroundedNeutral, deltaWyeIndex] = ...
         pathToBus(network, busId)
-pathElements = struct('type', {}, 'id', {}, 'fromBus', {}, 'toBus', {}, 'windingConnection', {});
-pathBranches = {};
-Z1 = network.source.Z1_pu;
-Z2 = network.source.Z2_pu;
-Z0 = network.source.Z0_pu;
-zeroSequenceSupported = true;
-currentBus = busId;
-while ~strcmp(currentBus, char(network.sourceBus))
-    branchIndex = find(strcmp({network.branches.toBus}, currentBus), 1);
-    transformerIndex = [];
-    if isfield(network, 'transformers')
-        transformerIndex = find(strcmp({network.transformers.lowVoltageBus}, ...
-            currentBus), 1);
-    end
-    if isempty(branchIndex) && isempty(transformerIndex)
-        error('runIntegratedFaultStudy:UnreachableBus', ...
-            'Faulted bus %s is not reachable from the source.', busId);
-    end
-    if ~isempty(transformerIndex)
-        transformer = network.transformers(transformerIndex);
-        pathElements = [struct('type', 'transformer', ...
-            'id', char(transformer.id), ...
-            'fromBus', char(transformer.highVoltageBus), ...
-            'toBus', char(transformer.lowVoltageBus), ...
-            'windingConnection', char(transformer.windingConnection)), pathElements];
-        Z1 = Z1 + transformer.Z1_pu;
-        Z2 = Z2 + transformer.Z2_pu;
-        if strcmpi(strtrim(transformer.windingConnection), ...
-                'delta-grounded-wye')
-            zeroSequenceSupported = false;
-        elseif isfinite(Z0)
-            Z0 = Z0 + transformer.Z0_pu;
-        end
-        currentBus = char(transformer.highVoltageBus);
-    else
-        branch = network.branches(branchIndex);
-        pathElements = [struct('type', 'branch', ...
-            'id', char(branch.id), ...
-            'fromBus', char(branch.fromBus), ...
-            'toBus', char(branch.toBus), ...
-            'windingConnection', ''), pathElements];
-        pathBranches = [{char(branch.id)}, pathBranches];
-        Z1 = Z1 + branch.Z1_pu;
-        Z2 = Z2 + branch.Z2_pu;
-        if isfinite(Z0)
-            Z0 = Z0 + branch.Z0_pu;
-        end
-        currentBus = char(branch.fromBus);
-    end
+[pathElements, Z1, Z2, Z0, hasGroundedNeutral, deltaWyeIndex] = traceRadialPath(network, busId);
+branchIndices = strcmp({pathElements.type}, 'branch');
+pathBranches = {pathElements(branchIndices).id};
 end
+
+function phases = sequenceToPhase(sequence)
+a = exp(1i * 2*pi/3);
+phases = [1, 1, 1; 1, a^2, a; 1, a, a^2] * sequence;
 end
 
 function busId = measurementBusForElement(element, side)

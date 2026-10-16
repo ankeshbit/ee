@@ -66,14 +66,32 @@ classdef TestNetworkPhasorAnalysis < matlab.unittest.TestCase
             testCase.verifyEqual(relay.directionalResult.status, 'unsupported');
         end
 
-        function testBlockedZeroSequenceIsRejected(testCase)
+        function testDeltaGroundedWyePhasorsCalculatedSuccessfully(testCase)
             network = createIllustrativeBranchedTransformerRadialNetwork();
             network.transformers.windingConnection = 'delta-grounded-wye';
             network.transformers.grounding = 'low neutral grounded';
             scenario = caseScenario('B_SLG', 'BUS_B', 'SLG', 0);
+            result = calculateNetworkPhasors(network, scenario, relaySet());
+            testCase.verifyEqual(numel(result.sequenceCurrents_pu), 3);
+            testCase.verifyGreaterThan(abs(result.sequenceCurrents_pu(1)), 0);
+
+            % HV relay should measure zero zero-sequence current
+            hvRelay = result.relayMeasurements(strcmp({result.relayMeasurements.relayId}, 'R_HV'));
+            testCase.verifyEqual(hvRelay.sequenceCurrents_pu(1), 0, 'AbsTol', 1e-12);
+
+            % LV relay should measure non-zero zero-sequence current
+            lvRelay = result.relayMeasurements(strcmp({result.relayMeasurements.relayId}, 'R_LV'));
+            testCase.verifyGreaterThan(abs(lvRelay.sequenceCurrents_pu(1)), 0);
+        end
+
+        function testUngroundedZeroSequencePhasorsRejected(testCase)
+            network = createIllustrativeBranchedTransformerRadialNetwork();
+            network.transformers.windingConnection = 'delta-grounded-wye';
+            network.transformers.grounding = 'ungrounded';
+            scenario = caseScenario('B_SLG', 'BUS_B', 'SLG', 0);
             testCase.verifyError(@() calculateNetworkPhasors( ...
                 network, scenario, relaySet()), ...
-                'calculateNetworkPhasors:BlockedZeroSequence');
+                'calculateNetworkPhasors:NoGroundedNeutral');
         end
 
         function testDirectionalResultUsesCalculatedPhasors(testCase)

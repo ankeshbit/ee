@@ -21,11 +21,11 @@ if ~isempty(relays) && ~isstruct(relays)
         'relays must be a structure array.');
 end
 
-[path, Z1, Z2, Z0, zeroSequenceSupported] = pathData( ...
+[path, Z1, Z2, Z0, hasGroundedNeutral] = pathData( ...
     network, char(scenario.faultedBus));
-if ~zeroSequenceSupported && isZeroSequenceFault(scenario.faultType)
-    error('calculateNetworkPhasors:BlockedZeroSequence', ...
-        'Zero-sequence current calculation across delta-grounded-wye transformer boundary is unsupported.');
+if ~hasGroundedNeutral && isZeroSequenceFault(scenario.faultType)
+    error('calculateNetworkPhasors:NoGroundedNeutral', ...
+        'Zero-sequence current calculation cannot proceed because there is no grounded neutral on the fault path.');
 end
 Vth = network.source.Vth_pu;
 if isfield(scenario, 'Vth_pu')
@@ -55,7 +55,7 @@ result.relayMeasurements = relayPhasors( ...
 result.assumptions = { ...
     'Source plus unique source-to-fault path is the sequence equivalent.', ...
     'Off-path network load and parallel contributions are not solved.', ...
-    'Transformer phase shift and detailed zero-sequence behavior are unsupported.'};
+    'Delta-grounded-wye zero-sequence isolation modeled on wye side; Dyn11 phase rotation (+30 deg positive sequence) modeled on HV side.'};
 result.warnings = {'Analytical phasors are not Simscape simulation results.'};
 end
 
@@ -74,6 +74,12 @@ end
 end
 
 function results = busPhasors(network, path, Vth, Iseq)
+% Dyn11 vector group: High-voltage leads Low-voltage by +30 deg (+pi/6 rad) in positive sequence
+DELTA_WYE_PHASE_SHIFT_RAD = pi / 6;
+
+deltaWyeIdx = find(strcmp({path.type}, 'transformer') & ...
+    strcmpi(strtrim({path.windingConnection}), 'delta-grounded-wye'), 1);
+
 results = repmat(struct( ...
     'busId', '', 'voltageBaseV', [], 'currentBaseA', [], ...
     'sequenceVoltages_pu', [], 'phaseVoltages_pu', [], ...
@@ -88,6 +94,20 @@ for index = 1:numel(results)
         Z = cumulativeImpedance(network, path, index - 1);
     end
     bus = network.buses(strcmp({network.buses.id}, busId));
+
+    isHvBus = false;
+    if ~isempty(deltaWyeIdx) && index <= deltaWyeIdx
+        isHvBus = true;
+    end
+
+    if isHvBus
+        Iseq_bus = [0; ...
+            Iseq(2) * exp(1i * DELTA_WYE_PHASE_SHIFT_RAD); ...
+            Iseq(3) * exp(-1i * DELTA_WYE_PHASE_SHIFT_RAD)];
+    else
+        Iseq_bus = Iseq;
+    end
+
     Vseq = [-Z(1) * Iseq(1); Vth - Z(2) * Iseq(2); ...
         -Z(3) * Iseq(3)];
     results(index).busId = busId;
@@ -96,13 +116,19 @@ for index = 1:numel(results)
         network.base.SbaseVA, bus.VbaseV).IbaseA;
     results(index).sequenceVoltages_pu = Vseq;
     results(index).phaseVoltages_pu = sequenceToPhase(Vseq);
-    results(index).sequenceCurrents_pu = Iseq;
-    results(index).phaseCurrents_pu = sequenceToPhase(Iseq);
+    results(index).sequenceCurrents_pu = Iseq_bus;
+    results(index).phaseCurrents_pu = sequenceToPhase(Iseq_bus);
     results(index).supportStatus = 'supportedOnFaultPath';
 end
 end
 
 function results = relayPhasors(network, path, relays, Vth, Iseq)
+% Dyn11 vector group: High-voltage leads Low-voltage by +30 deg (+pi/6 rad) in positive sequence
+DELTA_WYE_PHASE_SHIFT_RAD = pi / 6;
+
+deltaWyeIdx = find(strcmp({path.type}, 'transformer') & ...
+    strcmpi(strtrim({path.windingConnection}), 'delta-grounded-wye'), 1);
+
 results = repmat(struct( ...
     'relayId', '', 'measurementElementType', '', ...
     'measurementElementId', '', 'measurementSide', '', ...
@@ -131,14 +157,30 @@ for index = 1:numel(relays)
     Z = measurementImpedance(network, path, pathIndex, side);
     Vseq = [-Z(1) * Iseq(1); Vth - Z(2) * Iseq(2); ...
         -Z(3) * Iseq(3)];
-    Iphase = sequenceToPhase(Iseq);
+
+    isHvSide = false;
+    if ~isempty(deltaWyeIdx)
+        if pathIndex < deltaWyeIdx || (pathIndex == deltaWyeIdx && strcmp(side, 'high'))
+            isHvSide = true;
+        end
+    end
+
+    if isHvSide
+        Iseq_relay = [0; ...
+            Iseq(2) * exp(1i * DELTA_WYE_PHASE_SHIFT_RAD); ...
+            Iseq(3) * exp(-1i * DELTA_WYE_PHASE_SHIFT_RAD)];
+    else
+        Iseq_relay = Iseq;
+    end
+
+    Iphase = sequenceToPhase(Iseq_relay);
     Vphase = sequenceToPhase(Vseq);
     results(index).measurementBus = busId;
     results(index).voltageBaseV = bus.VbaseV;
     results(index).currentBaseA = bases.IbaseA;
-    results(index).sequenceCurrents_pu = Iseq;
+    results(index).sequenceCurrents_pu = Iseq_relay;
     results(index).phaseCurrents_pu = Iphase;
-    results(index).sequenceCurrents_A = Iseq * bases.IbaseA;
+    results(index).sequenceCurrents_A = Iseq_relay * bases.IbaseA;
     results(index).phaseCurrents_A = Iphase * bases.IbaseA;
     results(index).sequenceVoltages_pu = Vseq;
     results(index).phaseVoltages_pu = Vphase;
@@ -147,60 +189,14 @@ for index = 1:numel(relays)
         settings = relay.directionalSettings;
     end
     results(index).directionalResult = evaluateDirectionalSupervision( ...
-        settings, struct('currentPhasor', Iseq(2), ...
+        settings, struct('currentPhasor', Iseq_relay(2), ...
         'polarizingVoltagePhasor', Vseq(2)));
     results(index).supportStatus = 'supportedOnFaultPath';
 end
 end
 
-function [path, Z1, Z2, Z0, zeroSequenceSupported] = pathData(network, busId)
-path = struct('type', {}, 'id', {}, 'fromBus', {}, 'toBus', {}, 'Z', {});
-Z1 = network.source.Z1_pu;
-Z2 = network.source.Z2_pu;
-Z0 = network.source.Z0_pu;
-zeroSequenceSupported = true;
-current = busId;
-while ~strcmp(current, char(network.sourceBus))
-    branchIndex = find(strcmp({network.branches.toBus}, current), 1);
-    transformerIndex = [];
-    if isfield(network, 'transformers')
-        transformerIndex = find(strcmp( ...
-            {network.transformers.lowVoltageBus}, current), 1);
-    end
-    if ~isempty(transformerIndex)
-        element = network.transformers(transformerIndex);
-        item.type = 'transformer';
-        item.id = char(element.id);
-        item.fromBus = char(element.highVoltageBus);
-        item.toBus = char(element.lowVoltageBus);
-        item.Z = [element.Z0_pu; element.Z1_pu; element.Z2_pu];
-        path = [item, path]; %#ok<AGROW>
-        current = item.fromBus;
-        Z1 = Z1 + element.Z1_pu;
-        Z2 = Z2 + element.Z2_pu;
-        if strcmpi(strtrim(element.windingConnection), ...
-                'delta-grounded-wye')
-            zeroSequenceSupported = false;
-        else
-            Z0 = Z0 + element.Z0_pu;
-        end
-    elseif ~isempty(branchIndex)
-        element = network.branches(branchIndex);
-        item.type = 'branch';
-        item.id = char(element.id);
-        item.fromBus = char(element.fromBus);
-        item.toBus = char(element.toBus);
-        item.Z = [element.Z0_pu; element.Z1_pu; element.Z2_pu];
-        path = [item, path]; %#ok<AGROW>
-        current = item.fromBus;
-        Z1 = Z1 + element.Z1_pu;
-        Z2 = Z2 + element.Z2_pu;
-        Z0 = Z0 + element.Z0_pu;
-    else
-        error('calculateNetworkPhasors:UnreachableBus', ...
-            'Faulted bus is not reachable from the source.');
-    end
-end
+function [path, Z1, Z2, Z0, hasGroundedNeutral, deltaWyeIndex] = pathData(network, busId)
+[path, Z1, Z2, Z0, hasGroundedNeutral, deltaWyeIndex] = traceRadialPath(network, busId);
 end
 
 function phases = sequenceToPhase(sequence)
