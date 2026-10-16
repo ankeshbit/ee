@@ -90,29 +90,62 @@ if ~isempty(study.relayTimingTable) && isstruct(study.relayTimingTable(1))
     end
 end
 
-% Comparison map
+% Comparison map keyed primarily by scenarioId, with fallback to faultType
 ctMap = containers.Map('KeyType','char','ValueType','any');
 if ~isempty(study.comparisonTable) && isstruct(study.comparisonTable(1))
     for i = 1:numel(study.comparisonTable)
         ct = study.comparisonTable(i);
-        if isfield(ct,'faultType')
+        if isfield(ct,'simulationScenarioId') && ~isempty(ct.simulationScenarioId)
+            ctMap(ct.simulationScenarioId) = ct;
+        end
+        if isfield(ct,'scenarioId') && ~isempty(ct.scenarioId)
+            ctMap(ct.scenarioId) = ct;
+        end
+        if isfield(ct,'faultType') && ~isempty(ct.faultType) && ~ctMap.isKey(ct.faultType)
             ctMap(ct.faultType) = ct;
         end
     end
 end
 
-fts = {'HEALTHY','3PH','SLG','LL','DLG','3PH_CBF'};
-for fi = 1:numel(fts)
-    ft = fts{fi};
-    pfId = sprintf('PF_%s', ft);
-    if ~simMap.isKey(pfId), continue; end
+% Build scenario list: canonical base scenarios followed by any additional (e.g. breaker failure)
+canonicalOrder = {'PF_HEALTHY','PF_3PH','PF_SLG','PF_LL','DLG','PF_DLG','PF_3PH_CBF'};
+orderedIds = {};
+for ci = 1:numel(canonicalOrder)
+    cid = canonicalOrder{ci};
+    if simMap.isKey(cid) && ~any(strcmp(orderedIds, cid))
+        orderedIds{end+1} = cid; %#ok<AGROW>
+    end
+end
+for i = 1:numel(study.simulationResults)
+    r = study.simulationResults{i};
+    if ~isempty(r) && isfield(r,'scenarioId') && simMap.isKey(r.scenarioId)
+        if ~any(strcmp(orderedIds, r.scenarioId))
+            orderedIds{end+1} = r.scenarioId; %#ok<AGROW>
+        end
+    end
+end
+
+for fi = 1:numel(orderedIds)
+    pfId = orderedIds{fi};
     r = simMap(pfId);
+    ft = r.faultType;
+    if contains(pfId, 'CBF') && ~contains(ft, 'CBF')
+        ft = [ft, '_CBF']; %#ok<AGROW>
+    end
 
     anaCurr = 'N/A';
     simCurr = 'N/A';
     absErr  = 'N/A';
     pctErr  = 'N/A';
-    if ctMap.isKey(ft)
+    if ctMap.isKey(pfId)
+        ct = ctMap(pfId);
+        anaCurr = sprintf('%.2f', ct.analyticalCurrent_A);
+        if ~isnan(ct.simulatedFundamentalRMS_A)
+            simCurr = sprintf('%.2f', ct.simulatedFundamentalRMS_A);
+            absErr  = sprintf('%.2f', ct.absoluteError_A);
+            pctErr  = sprintf('%.2f', ct.percentageError);
+        end
+    elseif ctMap.isKey(ft)
         ct = ctMap(ft);
         anaCurr = sprintf('%.2f', ct.analyticalCurrent_A);
         if ~isnan(ct.simulatedFundamentalRMS_A)

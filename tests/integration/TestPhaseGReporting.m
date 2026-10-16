@@ -219,6 +219,27 @@ classdef TestPhaseGReporting < matlab.unittest.TestCase
                 'Must not render pass badge element when overallPass=false.');
         end
 
+        function testCSVKeyedByScenarioIdPreventsCBFCollision(tc)
+            study = tc.p_makeSyntheticStudy();
+            % Inject comparison rows where PF_3PH and PF_3PH_CBF share faultType='3PH'
+            study.comparisonTable = [ ...
+                struct('scenarioId', 'PF_3PH', 'faultType', '3PH', 'analyticalCurrent_A', 760.67, ...
+                       'simulatedFundamentalRMS_A', 760.50, 'absoluteError_A', 0.17, 'percentageError', 0.02), ...
+                struct('scenarioId', 'PF_3PH_CBF', 'faultType', '3PH', 'analyticalCurrent_A', 760.67, ...
+                       'simulatedFundamentalRMS_A', 999.99, 'absoluteError_A', 239.32, 'percentageError', 31.46) ...
+            ];
+            paths = generateFaultStudyReport(study, tc.tmpDir);
+            csvLines = splitlines(fileread(paths.csv));
+            line3PH = csvLines(contains(csvLines, 'PF_3PH,'));
+            tc.verifyNotEmpty(line3PH);
+            tc.verifyTrue(contains(line3PH{1}, '760.50'), ...
+                'PF_3PH must keep its own simulated current and not be clobbered by CBF');
+            lineCBF = csvLines(contains(csvLines, 'PF_3PH_CBF,'));
+            tc.verifyNotEmpty(lineCBF);
+            tc.verifyTrue(contains(lineCBF{1}, '999.99'), ...
+                'PF_3PH_CBF must keep its own simulated current');
+        end
+
     end
 
     %% ─── PART 3: Plotting functions ──────────────────────────────────────
