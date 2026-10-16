@@ -79,10 +79,10 @@ results = repmat(struct( ...
 for index = 1:numel(results)
     if index == 1
         busId = char(network.sourceBus);
-        Z = [0; 0; 0];
+        Z = cumulativeImpedance(network, path, 0);
     else
         busId = path(index - 1).toBus;
-        Z = cumulativeImpedance(path, index - 1);
+        Z = cumulativeImpedance(network, path, index - 1);
     end
     bus = network.buses(strcmp({network.buses.id}, busId));
     Vseq = [-Z(1) * Iseq(1); Vth - Z(2) * Iseq(2); ...
@@ -125,7 +125,7 @@ for index = 1:numel(relays)
     busId = measurementBus(path(pathIndex), side);
     bus = network.buses(strcmp({network.buses.id}, busId));
     bases = calculateBaseValues(network.base.SbaseVA, bus.VbaseV);
-    Z = measurementImpedance(path, pathIndex, side);
+    Z = measurementImpedance(network, path, pathIndex, side);
     Vseq = [-Z(1) * Iseq(1); Vth - Z(2) * Iseq(2); ...
         -Z(3) * Iseq(3)];
     Iphase = sequenceToPhase(Iseq);
@@ -232,8 +232,8 @@ else
 end
 end
 
-function Z = measurementImpedance(path, elementIndex, side)
-Z = cumulativeImpedance(path, elementIndex - 1);
+function Z = measurementImpedance(network, path, elementIndex, side)
+Z = cumulativeImpedance(network, path, elementIndex - 1);
 if strcmp(path(elementIndex).type, 'transformer') && strcmp(side, 'low')
     Z = Z + path(elementIndex).Z;
 elseif strcmp(path(elementIndex).type, 'branch') && strcmp(side, 'to')
@@ -241,8 +241,8 @@ elseif strcmp(path(elementIndex).type, 'branch') && strcmp(side, 'to')
 end
 end
 
-function Z = cumulativeImpedance(path, count)
-Z = [0; 0; 0];
+function Z = cumulativeImpedance(network, path, count)
+Z = [network.source.Z0_pu; network.source.Z1_pu; network.source.Z2_pu];
 for index = 1:count
     Z = Z + path(index).Z;
 end
