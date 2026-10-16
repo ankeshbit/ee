@@ -23,8 +23,11 @@ jobs:
             MATLAB
             Simulink
             Simscape
+            Simscape_Electrical
 
       - name: Run test suite via scripts/run_all_tests.m
         uses: matlab-actions/run-command@v2
+        env:
+          REQUIRE_SIMULATION_TESTS: "1"
         with:
           command: run('scripts/run_all_tests.m')
