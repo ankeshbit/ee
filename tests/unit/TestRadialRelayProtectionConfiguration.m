@@ -42,6 +42,16 @@ classdef TestRadialRelayProtectionConfiguration < matlab.unittest.TestCase
             end
         end
 
+        function testBusAFaultNotAssignedToRelayBusA(testCase)
+            % RELAY_BUS_A measures FEEDER_BRB (outgoing from Bus A to Bus B).
+            % Bus A faults must not be assigned to RELAY_BUS_A as primary protection.
+            cfg = testCase.config;
+            zoneT1 = cfg.zones(strcmp({cfg.zones.id}, 'ZONE_TRANSFORMER_T1'));
+            testCase.verifyFalse(any(strcmp(zoneT1.applicableFaultedBuses, 'BUS_A')) && ...
+                strcmp(zoneT1.primaryRelayId, 'RELAY_BUS_A'), ...
+                'Bus A faults must not be assigned to RELAY_BUS_A as primary');
+        end
+
         function testCTRatioConversion(testCase)
             % Test CT ratio conversion consistency
             pri_A = 1872.22;
