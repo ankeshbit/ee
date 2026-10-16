@@ -53,7 +53,7 @@ for scenarioIndex = 1:numel(scenarios)
         extractFaultCurrent(fault, char(scenario.faultType));
     faultCurrent_A = faultCurrent_pu * bases.IbaseA;
     relayResults = evaluateRelays( ...
-        relays, pathElements, faultCurrent_pu, network);
+        relays, pathElements, faultCurrent_pu, network, char(scenario.faultType));
     coordinationResults = evaluatePairs( ...
         coordinationPairs, relayResults, relays);
 
@@ -110,7 +110,7 @@ switch lower(strtrim(faultType))
 end
 end
 
-function relayResults = evaluateRelays(relays, pathElements, faultCurrent_pu, network)
+function relayResults = evaluateRelays(relays, pathElements, faultCurrent_pu, network, faultType)
 relayResults = repmat(struct( ...
     'relayId', '', 'protectedBranch', '', 'measurementElementType', '', ...
     'measurementElementId', '', 'measurementSide', '', ...
@@ -126,6 +126,17 @@ for relayIndex = 1:numel(relays)
     pathIndex = find(strcmp({pathElements.type}, elementType) & ...
         strcmp({pathElements.id}, elementId), 1);
     onPath = ~isempty(pathIndex);
+    if onPath && nargin >= 5 && ~isThreePhaseFault(faultType) && isfield(pathElements, 'windingConnection')
+        xfmrIndices = find(strcmp({pathElements.type}, 'transformer') & ...
+            cellfun(@(wc) contains(lower(wc), 'delta'), {pathElements.windingConnection}));
+        if ~isempty(xfmrIndices)
+            deltaIdx = xfmrIndices(1);
+            if pathIndex < deltaIdx || (pathIndex == deltaIdx && strcmp(side, 'high'))
+                error('runIntegratedFaultStudy:UnsupportedTransformerPhaseShift', ...
+                    'Unbalanced fault calculation across delta-wye transformer boundary is unsupported for relay %s.', relay.id);
+            end
+        end
+    end
     measurementBus = '';
     if onPath
         measurementBus = measurementBusForElement( ...
@@ -246,7 +257,7 @@ end
 
 function [pathElements, pathBranches, Z1, Z2, Z0, zeroSequenceSupported] = ...
         pathToBus(network, busId)
-pathElements = struct('type', {}, 'id', {}, 'fromBus', {}, 'toBus', {});
+pathElements = struct('type', {}, 'id', {}, 'fromBus', {}, 'toBus', {}, 'windingConnection', {});
 pathBranches = {};
 Z1 = network.source.Z1_pu;
 Z2 = network.source.Z2_pu;
@@ -269,7 +280,8 @@ while ~strcmp(currentBus, char(network.sourceBus))
         pathElements = [struct('type', 'transformer', ...
             'id', char(transformer.id), ...
             'fromBus', char(transformer.highVoltageBus), ...
-            'toBus', char(transformer.lowVoltageBus)), pathElements];
+            'toBus', char(transformer.lowVoltageBus), ...
+            'windingConnection', char(transformer.windingConnection)), pathElements];
         Z1 = Z1 + transformer.Z1_pu;
         Z2 = Z2 + transformer.Z2_pu;
         if strcmpi(strtrim(transformer.windingConnection), ...
@@ -284,7 +296,8 @@ while ~strcmp(currentBus, char(network.sourceBus))
         pathElements = [struct('type', 'branch', ...
             'id', char(branch.id), ...
             'fromBus', char(branch.fromBus), ...
-            'toBus', char(branch.toBus)), pathElements];
+            'toBus', char(branch.toBus), ...
+            'windingConnection', ''), pathElements];
         pathBranches = [{char(branch.id)}, pathBranches];
         Z1 = Z1 + branch.Z1_pu;
         Z2 = Z2 + branch.Z2_pu;
@@ -326,6 +339,11 @@ function isFault = isZeroSequenceFault(faultType)
 isFault = any(strcmp(lower(strtrim(faultType)), ...
     {'slg', 'single line to ground', 'single-line-to-ground', ...
     'dlg', 'double line to ground', 'double-line-to-ground'}));
+end
+
+function is3Ph = isThreePhaseFault(faultType)
+is3Ph = any(strcmp(lower(strtrim(faultType)), ...
+    {'3ph', 'three phase', 'three-phase'}));
 end
 
 function validateScenarios(scenarios, network)

@@ -73,6 +73,7 @@ This document records the approved engineering assumptions, mathematical convent
   - Delta / grounded-wye transformer zero-sequence transfer and grounded-wye zero-sequence source behavior across boundaries are currently unsupported in the analytical solver; SLG/DLG studies across that boundary trigger `runIntegratedFaultStudy:BlockedZeroSequence`.
 - [x] **Document phase-shift conventions and the reference used for vector groups:**
   - Yg/Yg produces $0^\circ$ phase displacement between HV and LV line voltages.
+  - Delta-wye sequence phase shift ($\pm 30^\circ$) and resulting unbalanced fault line currents across the boundary (e.g., $2 I_1$ peak phase current during LL faults) are unmodeled; unbalanced fault studies across delta-wye boundaries with HV-side relays trigger `runIntegratedFaultStudy:UnsupportedTransformerPhaseShift`.
 - [x] **Confirm treatment of off-nominal taps and phase-shifting transformers:**
   - Off-nominal tap changers and phase-shifting transformers are unsupported in this milestone.
 
