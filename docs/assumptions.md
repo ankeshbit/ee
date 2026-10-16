@@ -70,7 +70,7 @@ This document records the approved engineering assumptions, mathematical convent
   - Alternative `delta-grounded-wye` configuration is supported and tested for zero-sequence isolation.
 - [x] **Confirm zero-sequence transfer behavior through each transformer:**
   - Grounded-wye / grounded-wye transfers zero-sequence current through transformer neutral paths.
-  - Delta / grounded-wye blocks zero-sequence transfer from LV to HV side; SLG/DLG studies across that boundary correctly trigger `runIntegratedFaultStudy:BlockedZeroSequence`.
+  - Delta / grounded-wye transformer zero-sequence transfer and grounded-wye zero-sequence source behavior across boundaries are currently unsupported in the analytical solver; SLG/DLG studies across that boundary trigger `runIntegratedFaultStudy:BlockedZeroSequence`.
 - [x] **Document phase-shift conventions and the reference used for vector groups:**
   - Yg/Yg produces $0^\circ$ phase displacement between HV and LV line voltages.
 - [x] **Confirm treatment of off-nominal taps and phase-shifting transformers:**

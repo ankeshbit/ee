@@ -25,7 +25,7 @@ end
     network, char(scenario.faultedBus));
 if ~zeroSequenceSupported && isZeroSequenceFault(scenario.faultType)
     error('calculateNetworkPhasors:BlockedZeroSequence', ...
-        'The configured transformer blocks zero-sequence current.');
+        'Zero-sequence current calculation across delta-grounded-wye transformer boundary is unsupported.');
 end
 Vth = network.source.Vth_pu;
 if isfield(scenario, 'Vth_pu')

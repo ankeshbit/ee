@@ -87,6 +87,25 @@ classdef TestTransformerNetwork < matlab.unittest.TestCase
                 'runIntegratedFaultStudy:BlockedZeroSequence');
         end
 
+        function testDeltaGroundedWyeErrorMessageClarifiesUnsupported(testCase)
+            network = createIllustrativeTransformerRadialNetwork();
+            network.transformers.windingConnection = 'delta-grounded-wye';
+            network.transformers.grounding = 'low neutral grounded';
+            scenario = struct('id', 'low_slg', 'faultedBus', 'BUS_11KV', ...
+                'faultType', 'SLG', 'Zf_pu', 0);
+
+            try
+                runIntegratedFaultStudy(network, scenario, relaySet(), []);
+                testCase.verifyFail('Expected BlockedZeroSequence error');
+            catch ME
+                testCase.verifyEqual(ME.identifier, 'runIntegratedFaultStudy:BlockedZeroSequence');
+                testCase.verifyTrue(contains(ME.message, 'unsupported', 'IgnoreCase', true), ...
+                    'Error message should state calculation is unsupported');
+                testCase.verifyFalse(contains(ME.message, 'blocks zero-sequence', 'IgnoreCase', true), ...
+                    'Error message should not claim the transformer blocks zero-sequence current');
+            end
+        end
+
         function testHighAndLowSideFaultBases(testCase)
             network = createIllustrativeTransformerRadialNetwork();
             scenarios = [ ...
