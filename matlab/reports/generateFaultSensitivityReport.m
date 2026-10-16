@@ -27,8 +27,14 @@ end
 if isempty(study.coordinationTable)
     report.failedCoordination = study.coordinationTable;
 else
-    report.failedCoordination = study.coordinationTable( ...
-        ~study.coordinationTable.isCoordinated, :);
+    if ismember('isApplicable', study.coordinationTable.Properties.VariableNames)
+        appMask = study.coordinationTable.isApplicable;
+        report.failedCoordination = study.coordinationTable( ...
+            appMask & ~study.coordinationTable.isCoordinated, :);
+    else
+        report.failedCoordination = study.coordinationTable( ...
+            ~study.coordinationTable.isCoordinated, :);
+    end
 end
 if isempty(study.relayTable)
     report.nonOperatingRelays = study.relayTable;

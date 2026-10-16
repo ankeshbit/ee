@@ -91,6 +91,35 @@ classdef TestRadialRelayProtectionConfiguration < matlab.unittest.TestCase
             testCase.verifyEqual(pA33.coordinationStatus, 'Not applicable to this fault location');
         end
 
+        function testNonApplicablePairExcludedFromCoordinationSummary(testCase)
+            cfg = testCase.config;
+            % Add a failing pair applicable to BUS_A, alongside a non-applicable pair scoped to BUS_B
+            failingPair = cfg.coordinationPairs(1);
+            failingPair.pairId = 'PAIR_FAIL';
+            failingPair.primaryRelayId = 'RELAY_33KV';
+            failingPair.backupRelayId = 'RELAY_33KV';
+            failingPair.applicableFaultedBuses = {'BUS_A'};
+            failingPair.minimumCTI_s = 0.5; % minimumCTI > 0 with identical relay times will fail
+            testPairs = [cfg.coordinationPairs(1), failingPair]; % pair 1 is scoped to BUS_B (non-applicable for BUS_A)
+
+            scnA = struct('id', 'F_A', 'faultedBus', 'BUS_A', 'faultType', 'three phase', 'Zf_pu', 0);
+            resA = runIntegratedFaultStudy(cfg.network, scnA, cfg.relays, testPairs);
+
+            pNonApp = resA.coordinationResults(1);
+            pFail = resA.coordinationResults(2);
+
+            testCase.verifyFalse(pNonApp.isApplicable);
+            testCase.verifyTrue(isnan(pNonApp.isCoordinated));
+
+            testCase.verifyTrue(pFail.isApplicable);
+            testCase.verifyFalse(pFail.isCoordinated);
+
+            % Overall coordination across applicable pairs only must be false
+            appResults = resA.coordinationResults([resA.coordinationResults.isApplicable]);
+            isAllCoordinated = ~isempty(appResults) && all([appResults.isCoordinated] == 1);
+            testCase.verifyFalse(isAllCoordinated, 'Overall coordination must be false when an applicable pair fails');
+        end
+
         function testCTRatioConversion(testCase)
             % Test CT ratio conversion consistency
             pri_A = 1872.22;

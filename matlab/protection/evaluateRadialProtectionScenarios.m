@@ -261,17 +261,16 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
             t_bku = bkuRelayEval.operatingTime_s;
             t_pri_clr = priRelayEval.totalClearingTime_s;
 
-            % Distinct definitions:
-            % CTI = backup operating time - primary operating time
-            % Margin = backup operating time - primary total clearing time
+            isApplicable = true;
             if isfield(pair, 'applicableFaultedBuses') && ~isempty(pair.applicableFaultedBuses) && ...
                     isfield(sDef, 'faultedBus') && ~any(strcmp(cellstr(pair.applicableFaultedBuses), sDef.faultedBus))
                 t_pri = Inf;
                 t_bku = Inf;
                 t_pri_clr = Inf;
-                CTI_s = Inf;
-                margin_s = Inf;
-                isCoordinated = false;
+                CTI_s = NaN;
+                margin_s = NaN;
+                isCoordinated = NaN;
+                isApplicable = false;
                 coordStatus = 'Not applicable to this fault location';
             elseif isfinite(t_pri) && isfinite(t_bku)
                 CTI_s = t_bku - t_pri;
@@ -298,6 +297,7 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
             coordEvals(pIdx).pairId = pair.pairId;
             coordEvals(pIdx).primaryRelayId = pair.primaryRelayId;
             coordEvals(pIdx).backupRelayId = pair.backupRelayId;
+            coordEvals(pIdx).isApplicable = isApplicable;
             coordEvals(pIdx).primaryOperatingTime_s = t_pri;
             coordEvals(pIdx).backupOperatingTime_s = t_bku;
             coordEvals(pIdx).primaryTotalClearingTime_s = t_pri_clr;
@@ -313,6 +313,7 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
                 'pairId', pair.pairId, ...
                 'primaryRelayId', pair.primaryRelayId, ...
                 'backupRelayId', pair.backupRelayId, ...
+                'isApplicable', isApplicable, ...
                 't_primary_s', t_pri, ...
                 't_backup_s', t_bku, ...
                 't_primary_clearing_s', t_pri_clr, ...
