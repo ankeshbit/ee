@@ -100,6 +100,16 @@ classdef TestBreakerFailureScenario < matlab.unittest.TestCase
             report = generateFaultSensitivityReport(study);
             testCase.verifyEqual(height(report.backupClearingOutcomes), 1);
         end
+
+        function testZoneWithoutBackupRelaysReportsNoBackupProtection(testCase)
+            [fault, zones, relays, breakers] = caseData();
+            zones.backupRelayIds = {};
+            failureScenario = failure('cb_b_failed', 'CB_B');
+            result = evaluateBreakerFailureScenario( ...
+                fault, zones, relays, breakers, failureScenario);
+            testCase.verifyEqual(result.overallStatus, 'NO_BACKUP_PROTECTION');
+            testCase.verifyTrue(contains(result.reason, 'no backup', 'IgnoreCase', true));
+        end
     end
 end
 

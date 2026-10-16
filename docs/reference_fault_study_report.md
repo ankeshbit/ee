@@ -22,6 +22,11 @@
   - `RELAY_BUS_B`: Primary feeder protection, CT 400/5 A, $I_{pickup} = 1.0\text{ A-sec}$ ($80\text{ A}$ primary), $\text{TMS} = 0.10$, Curve = IEC Standard Inverse, CB opening delay = $50\text{ ms}$
   - `RELAY_BUS_A`: Feeder backup protection, CT 600/5 A, $I_{pickup} = 1.0\text{ A-sec}$ ($120\text{ A}$ primary), $\text{TMS} = 0.25$, Curve = IEC Standard Inverse, CB opening delay = $60\text{ ms}$
   - `RELAY_33KV`: Incomer protection, CT 200/5 A, $I_{pickup} = 1.5\text{ A-sec}$ ($60\text{ A}$ primary), $\text{TMS} = 0.40$, Curve = IEC Standard Inverse, CB opening delay = $80\text{ ms}$
+- **Protection Zones & Scoping:**
+  - `ZONE_FEEDER_BRB`: Feeder BRB / Bus B (`applicableFaultedBuses={'BUS_B'}`), primary `RELAY_BUS_B`, backups `RELAY_BUS_A` and `RELAY_33KV`.
+  - `ZONE_TRANSFORMER_T1`: Transformer T1 (`applicableFaultedBuses={'BUS_11KV'}`), primary `RELAY_33KV`, backups none.
+  - `ZONE_FEEDER_BRA`: Feeder BRA / Bus A (`applicableFaultedBuses={'BUS_A'}`), primary `RELAY_33KV`, breaker `CB_33KV`, backups none. Bus A faults are cleared exclusively by `RELAY_33KV` in ~1.07 s; `CB_33KV` failure has no downstream backup.
+  - Coordination pairs `PAIR_B_A` and `PAIR_A_33KV` apply strictly to `BUS_B` fault scenarios.
 
 ---
 

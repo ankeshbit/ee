@@ -268,11 +268,16 @@ The relay protection layer integrates the validated Simscape physical fault simu
 1. **Topology & Measurement Points:**
    - **`RELAY_BUS_B` (Feeder Relay):** Measures 11 kV line current entering Bus B. Configured with a 400/5 A CT ($N = 80$). Pickup current $I_{\text{pickup,sec}} = 1.0\,\text{A}$ ($80\,\text{A}$ primary), ensuring secure margin over healthy load ($52.5\,\text{A}$ primary, $0.656\,\text{A}$ secondary). TMS = 0.10, IEC Standard Inverse.
    - **`RELAY_BUS_A` (Substation Feeder Relay):** Measures 11 kV line current leaving Bus A towards Bus B. Configured with a 600/5 A CT ($N = 120$). Pickup current $I_{\text{pickup,sec}} = 1.0\,\text{A}$ ($120\,\text{A}$ primary). TMS = 0.25, IEC Standard Inverse. Serves as primary for Feeder BRB and backup for Bus B faults.
-   - **`RELAY_33KV` (Transformer HV Relay):** Measures 33 kV current upstream of the step-down transformer. Configured with a 200/5 A CT ($N = 40$). Pickup current $I_{\text{pickup,sec}} = 1.5\,\text{A}$ ($60\,\text{A}$ primary at 33 kV, corresponding to $180\,\text{A}$ at 11 kV). TMS = 0.40, IEC Standard Inverse. Serves as remote backup.
+   - **`RELAY_33KV` (Transformer HV Relay):** Measures 33 kV current upstream of the step-down transformer. Configured with a 200/5 A CT ($N = 40$). Pickup current $I_{\text{pickup,sec}} = 1.5\,\text{A}$ ($60\,\text{A}$ primary at 33 kV, corresponding to $180\,\text{A}$ at 11 kV). TMS = 0.40, IEC Standard Inverse. Serves as primary protection for Transformer T1 and Feeder BRA, and remote backup for Feeder BRB / Bus B faults.
 2. **Circuit Breakers & Opening Delays:**
    - `CB_BUS_B`: $t_{\text{brk}} = 0.050\,\text{s}$ (50 ms, 2.5 cycles at 50 Hz).
    - `CB_BUS_A`: $t_{\text{brk}} = 0.060\,\text{s}$ (60 ms, 3 cycles at 50 Hz).
    - `CB_33KV`: $t_{\text{brk}} = 0.080\,\text{s}$ (80 ms, 4 cycles at 50 Hz).
+3. **Protection Zones & Coordination Scoping:**
+   - **`ZONE_FEEDER_BRB`:** Protects Feeder BRB (`applicableFaultedBuses = {'BUS_B'}`). Primary: `RELAY_BUS_B` (`CB_BUS_B`), Backups: `RELAY_BUS_A`, `RELAY_33KV`.
+   - **`ZONE_TRANSFORMER_T1`:** Protects Transformer T1 (`applicableFaultedBuses = {'BUS_11KV'}`). Primary: `RELAY_33KV` (`CB_33KV`), Backups: None.
+   - **`ZONE_FEEDER_BRA`:** Protects Feeder BRA (`applicableFaultedBuses = {'BUS_A'}`). Primary: `RELAY_33KV` (`CB_33KV`), Backups: None.
+   - **Coordination Pairs:** `PAIR_B_A` and `PAIR_A_33KV` have `applicableFaultedBuses = {'BUS_B'}`. For Bus A faults, no local relay sees the fault, so `RELAY_33KV` clears in ~1.07 s (tripping the entire transformer), and breaker failure of `CB_33KV` has no remote backup configured.
 
 ### B. IEC Curve Mathematical Formulations
 Overcurrent operating times are calculated according to IEC 60255 standard curves:

@@ -55,7 +55,7 @@ for scenarioIndex = 1:numel(scenarios)
     relayResults = evaluateRelays( ...
         relays, pathElements, faultCurrent_pu, network, char(scenario.faultType));
     coordinationResults = evaluatePairs( ...
-        coordinationPairs, relayResults, relays);
+        coordinationPairs, relayResults, relays, char(scenario.faultedBus));
 
     studyResults(scenarioIndex).scenarioId = char(scenario.id);
     studyResults(scenarioIndex).faultedBus = char(scenario.faultedBus);
@@ -186,7 +186,7 @@ for relayIndex = 1:numel(relays)
 end
 end
 
-function coordinationResults = evaluatePairs(pairs, relayResults, relays)
+function coordinationResults = evaluatePairs(pairs, relayResults, relays, faultedBus)
 coordinationResults = repmat(struct( ...
     'primaryRelayId', '', 'backupRelayId', '', 'minimumCTI_s', [], ...
     'primaryOperatingTime_s', Inf, 'backupOperatingTime_s', Inf, ...
@@ -195,6 +195,17 @@ coordinationResults = repmat(struct( ...
     'coordinationStatus', ''), 1, numel(pairs));
 for pairIndex = 1:numel(pairs)
     pair = pairs(pairIndex);
+    coordinationResults(pairIndex).primaryRelayId = char(pair.primaryRelayId);
+    coordinationResults(pairIndex).backupRelayId = char(pair.backupRelayId);
+    coordinationResults(pairIndex).minimumCTI_s = pair.minimumCTI_s;
+    if nargin >= 4 && isfield(pair, 'applicableFaultedBuses') && ~isempty(pair.applicableFaultedBuses)
+        afb = cellstr(pair.applicableFaultedBuses);
+        if ~any(strcmp(afb, faultedBus))
+            coordinationResults(pairIndex).coordinationStatus = ...
+                'Not applicable to this fault location';
+            continue;
+        end
+    end
     primary = findRelay(relayResults, char(pair.primaryRelayId));
     backup = findRelay(relayResults, char(pair.backupRelayId));
     coordination = coordinateRelayResults(primary, backup, ...

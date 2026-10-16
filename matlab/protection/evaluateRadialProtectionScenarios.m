@@ -215,7 +215,16 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
             % Distinct definitions:
             % CTI = backup operating time - primary operating time
             % Margin = backup operating time - primary total clearing time
-            if isfinite(t_pri) && isfinite(t_bku)
+            if isfield(pair, 'applicableFaultedBuses') && ~isempty(pair.applicableFaultedBuses) && ...
+                    isfield(sDef, 'faultedBus') && ~any(strcmp(cellstr(pair.applicableFaultedBuses), sDef.faultedBus))
+                t_pri = Inf;
+                t_bku = Inf;
+                t_pri_clr = Inf;
+                CTI_s = Inf;
+                margin_s = Inf;
+                isCoordinated = false;
+                coordStatus = 'Not applicable to this fault location';
+            elseif isfinite(t_pri) && isfinite(t_bku)
                 CTI_s = t_bku - t_pri;
                 margin_s = t_bku - t_pri_clr;
                 isCoordinated = (CTI_s >= pair.minimumCTI_s);

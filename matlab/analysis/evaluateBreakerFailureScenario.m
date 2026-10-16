@@ -106,7 +106,13 @@ for index = 1:numel(result.backupRelayIds)
     end
 end
 if isempty(best)
-    result.reason = 'No configured backup relay and breaker can clear the fault.';
+    if isempty(result.backupRelayIds)
+        result.overallStatus = 'NO_BACKUP_PROTECTION';
+        result.reason = 'No backup protection configured for this zone.';
+    else
+        result.overallStatus = 'NOT_CLEARED_BY_MODELED_PROTECTION';
+        result.reason = 'No configured backup relay and breaker can clear the fault.';
+    end
     return;
 end
 

@@ -76,6 +76,7 @@ The following tables summarize the real validation metrics generated from [`scri
 ### C. Protection Coordination & Backup Performance
 - **Coordination Time Interval (CTI):** Primary relay trips at $0.2125\,\text{s}$; backup relay trips at $0.5466\,\text{s}$. $\text{CTI} = 0.3341\,\text{s}$ ($334.1\,\text{ms}$), comfortably exceeding the $250\,\text{ms}$ grading margin.
 - **Breaker Failure Performance:** When primary breaker `CB_BUS_B` fails to open, backup relay `RELAY_BUS_A` detects sustained fault overcurrent and trips backup breaker `CB_BUS_A` at $t = 0.6066\,\text{s}$.
+- **Protection Zones & Bus A Clearing:** The network defines three zones (`ZONE_FEEDER_BRB` for Bus B, `ZONE_TRANSFORMER_T1` for Bus 11KV, and `ZONE_FEEDER_BRA` for Bus A). Coordination pairs `PAIR_B_A` and `PAIR_A_33KV` are scoped to Bus B. Bus A faults are cleared solely by incomer `RELAY_33KV` in ~1.07 s; `CB_33KV` breaker failure has no remote backup configured.
 - **Galvanic Fault Isolation:** Post-clearing current extinction confirms peak current $<0.010\,\text{A}$ ($0.0090\,\text{A}$ observed).
 
 ---

@@ -30,7 +30,7 @@ classdef TestRadialRelayProtectionConfiguration < matlab.unittest.TestCase
             testCase.verifyEqual(numel(cfg.relays), 3);
             testCase.verifyEqual(numel(cfg.breakers), 3);
             testCase.verifyEqual(numel(cfg.coordinationPairs), 2);
-            testCase.verifyEqual(numel(cfg.zones), 2);
+            testCase.verifyEqual(numel(cfg.zones), 3);
 
             for idx = 1:numel(cfg.relays)
                 r = cfg.relays(idx);
@@ -42,14 +42,53 @@ classdef TestRadialRelayProtectionConfiguration < matlab.unittest.TestCase
             end
         end
 
-        function testBusAFaultNotAssignedToRelayBusA(testCase)
-            % RELAY_BUS_A measures FEEDER_BRB (outgoing from Bus A to Bus B).
-            % Bus A faults must not be assigned to RELAY_BUS_A as primary protection.
+        function testEveryFaultableBusHasActivePrimaryRelayCoveringZone(testCase)
+            % SOURCE_33KV is the infinite grid boundary/source bus and excluded.
+            % All legitimate faultable buses in the study must have complete zone coverage.
             cfg = testCase.config;
-            zoneT1 = cfg.zones(strcmp({cfg.zones.id}, 'ZONE_TRANSFORMER_T1'));
-            testCase.verifyFalse(any(strcmp(zoneT1.applicableFaultedBuses, 'BUS_A')) && ...
-                strcmp(zoneT1.primaryRelayId, 'RELAY_BUS_A'), ...
-                'Bus A faults must not be assigned to RELAY_BUS_A as primary');
+            faultableBuses = {'BUS_11KV', 'BUS_A', 'BUS_B'};
+            faultTypes = {'three phase', 'SLG', 'LL', 'DLG'};
+
+            for bi = 1:numel(faultableBuses)
+                busId = faultableBuses{bi};
+                matchingZones = cfg.zones(cellfun(@(afb) any(strcmp(afb, busId)), ...
+                    {cfg.zones.applicableFaultedBuses}));
+                testCase.verifyNotEmpty(matchingZones, ...
+                    sprintf('Bus %s must be listed in applicableFaultedBuses of at least one zone.', busId));
+
+                for fi = 1:numel(faultTypes)
+                    fType = faultTypes{fi};
+                    scn = struct('id', sprintf('F_%s_%s', busId, matlab.lang.makeValidName(fType)), ...
+                        'faultedBus', busId, 'faultType', fType, 'Zf_pu', 0);
+                    res = runIntegratedFaultStudy(cfg.network, scn, cfg.relays, cfg.coordinationPairs);
+
+                    % (i) Check zone coverage
+                    testCase.verifyNotEmpty(matchingZones);
+
+                    % (ii) Check primary relay of that zone is on fault path and operates
+                    primaryRelayId = matchingZones(1).primaryRelayId;
+                    pRelayRes = res.relayResults(strcmp({res.relayResults.relayId}, primaryRelayId));
+                    testCase.verifyNotEmpty(pRelayRes, ...
+                        sprintf('Primary relay %s result must exist for %s %s', primaryRelayId, busId, fType));
+                    testCase.verifyTrue(pRelayRes.isOnFaultPath, ...
+                        sprintf('Primary relay %s must be on fault path for %s %s', primaryRelayId, busId, fType));
+                    testCase.verifyTrue(pRelayRes.operates, ...
+                        sprintf('Primary relay %s must operate for %s %s', primaryRelayId, busId, fType));
+                end
+            end
+        end
+
+        function testCoordinationPairsApplicableFaultedBusesScoping(testCase)
+            cfg = testCase.config;
+            % For a fault at BUS_A, pairs scoped to BUS_B must report status 'Not applicable to this fault location'
+            scnA = struct('id', 'F_BUS_A_3PH', 'faultedBus', 'BUS_A', 'faultType', 'three phase', 'Zf_pu', 0);
+            resA = runIntegratedFaultStudy(cfg.network, scnA, cfg.relays, cfg.coordinationPairs);
+
+            pBA = resA.coordinationResults(strcmp({resA.coordinationResults.primaryRelayId}, 'RELAY_BUS_B'));
+            testCase.verifyEqual(pBA.coordinationStatus, 'Not applicable to this fault location');
+
+            pA33 = resA.coordinationResults(strcmp({resA.coordinationResults.primaryRelayId}, 'RELAY_BUS_A'));
+            testCase.verifyEqual(pA33.coordinationStatus, 'Not applicable to this fault location');
         end
 
         function testCTRatioConversion(testCase)

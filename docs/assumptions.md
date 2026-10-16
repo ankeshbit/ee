@@ -103,6 +103,10 @@ This document records the approved engineering assumptions, mathematical convent
   - Actual modeled CTI under 3PH fault: $0.5466\,\text{s} - 0.2125\,\text{s} = 334.1\,\text{ms}$ (meets criteria).
 - [x] **Identify any vendor-specific behavior that must not be approximated without evidence:**
   - Vendor-proprietary digital filtering, microprocessor dead-bands, and proprietary trip logic are excluded in favor of standard IEC 60255 open standards.
+- [x] **Document Bus A protection coverage and breaker-failure behavior:**
+  - Bus A is situated between Feeder BRA and Feeder BRB. Because `RELAY_BUS_A` measures outgoing current on `FEEDER_BRB` (from side towards Bus B), faults on Bus A produce no current in `FEEDER_BRB`.
+  - Bus A faults (`ZONE_FEEDER_BRA`) are cleared exclusively by the upstream incomer relay `RELAY_33KV` (operating at approximately 1.07 s for 3PH bolted faults, tripping incomer breaker `CB_33KV` and de-energizing the whole transformer).
+  - The breaker-failure scenario for `CB_33KV` during a Bus A fault has no further upstream modeled backup protection (`NO_BACKUP_PROTECTION`).
 
 ---
 
