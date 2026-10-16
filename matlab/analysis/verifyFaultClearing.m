@@ -54,7 +54,7 @@ function cv = verifyFaultClearing(t, iBusB, tFault, openTimeB, openTimeA, thresh
                 persistMask = (t >= tk & t <= tk + Tc);
                 if all(isLow(persistMask))
                     faultCleared = true;
-                    extinctTime  = tk;
+                    extinctTime  = max(bestOpen, tk - Tc);
                     break;
                 end
             end

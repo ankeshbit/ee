@@ -162,6 +162,25 @@ classdef TestSimulationMeasurementProcessing < matlab.unittest.TestCase
             testCase.verifyFalse(isnan(cvCleared.extinctionTime_s));
         end
 
+        function testVerifyFaultClearingWindowStart(testCase)
+            f0 = 50;
+            dt = 1e-4;
+            t = (0:dt:0.5)';
+            tFault = 0.05;
+            openTimeB = 0.10;
+            thresh = 0.01;
+            tQuiet = 0.11; % Current goes to zero at 0.11 s
+
+            iSig = [1000 * sqrt(2) * sin(2*pi*f0*t), zeros(numel(t), 2)];
+            iSig(t >= tQuiet, :) = 0;
+            cv = verifyFaultClearing(t, iSig, tFault, openTimeB, NaN, thresh, f0);
+
+            testCase.verifyTrue(cv.faultCleared);
+            testCase.verifyEqual(cv.extinctionTime_s, tQuiet, 'AbsTol', 1e-3, ...
+                'extinctionTime_s must be the start of the quiet window where current actually extinguished.');
+        end
+
     end
 
 end
+
