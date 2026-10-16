@@ -164,6 +164,23 @@ classdef TestSimulationContractsAndValidation < matlab.unittest.TestCase
             testCase.verifyEqual(compFail.status, 'FAILED');
         end
 
+        function testCompareZeroAnalyticalBenchmarkRequiresAbsoluteTolerance(testCase)
+            simRes = createSimulationResultSchema('SIMULATION_COMPLETED', 'SCN_01');
+            simRes.isSimulated = true;
+            simRes.time_s = linspace(0, 0.2, 2001);
+            simRes.isValidMeasurementWindow = true;
+
+            % Analytical 0, simulated 10000, absTol 0.01 must FAIL
+            optFail = struct('simulatedVal', 10000.0, 'absTol', 0.01, 'relTolPercent', 5.0);
+            compFail = compareAnalyticalAndSimulation(0.0, simRes, 'current_A', 'BUS_B', optFail);
+            testCase.verifyEqual(compFail.status, 'FAILED');
+
+            % Analytical 0, simulated 0.005, absTol 0.01 must pass
+            optPass = struct('simulatedVal', 0.005, 'absTol', 0.01, 'relTolPercent', 5.0);
+            compPass = compareAnalyticalAndSimulation(0.0, simRes, 'current_A', 'BUS_B', optPass);
+            testCase.verifyEqual(compPass.status, 'PASSED');
+        end
+
     end
 
 end

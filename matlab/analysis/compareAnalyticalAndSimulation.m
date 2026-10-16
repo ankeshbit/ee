@@ -139,10 +139,14 @@ function comparison = compareAnalyticalAndSimulation( ...
     end
 
     % 5. Determine pass / fail
-    isWithinRel = isnan(comparison.percentageError) || (comparison.percentageError <= relTolPercent);
     isWithinAbs = (absErr <= absTol);
+    if isnan(comparison.percentageError)
+        isMatch = isWithinAbs;
+    else
+        isMatch = isWithinAbs || (comparison.percentageError <= relTolPercent);
+    end
 
-    if isWithinRel || isWithinAbs
+    if isMatch
         comparison.status = 'PASSED';
         comparison.explanation = sprintf( ...
             'Agreement satisfied within tolerance (Abs Err: %0.4g %s, Pct Err: %0.2f%%).', ...
