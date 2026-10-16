@@ -197,16 +197,8 @@ for pairIndex = 1:numel(pairs)
     pair = pairs(pairIndex);
     primary = findRelay(relayResults, char(pair.primaryRelayId));
     backup = findRelay(relayResults, char(pair.backupRelayId));
-    if primary.faultCurrentPrimary_A == backup.faultCurrentPrimary_A
-        primaryConfig = relays(strcmp({relays.id}, char(pair.primaryRelayId)));
-        backupConfig = relays(strcmp({relays.id}, char(pair.backupRelayId)));
-        coordination = checkRelayCoordination( ...
-            primary.faultCurrentPrimary_A, primaryConfig, backupConfig, ...
-            pair.minimumCTI_s);
-    else
-        coordination = coordinateRelayResults(primary, backup, ...
-            pair.minimumCTI_s);
-    end
+    coordination = coordinateRelayResults(primary, backup, ...
+        pair.minimumCTI_s);
     coordinationResults(pairIndex).primaryRelayId = char(pair.primaryRelayId);
     coordinationResults(pairIndex).backupRelayId = char(pair.backupRelayId);
     coordinationResults(pairIndex).minimumCTI_s = pair.minimumCTI_s;

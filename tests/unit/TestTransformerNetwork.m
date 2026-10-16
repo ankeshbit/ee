@@ -148,6 +148,15 @@ classdef TestTransformerNetwork < matlab.unittest.TestCase
                 'runIntegratedFaultStudy:UnsupportedTransformerPhaseShift');
         end
 
+        function testNonStructTransformerThrowsInvalidTransformer(testCase)
+            testCase.verifyError( ...
+                @() validateTransformerConfiguration(123, {'BUS_A', 'BUS_B'}), ...
+                'validateTransformerConfiguration:InvalidTransformer');
+            testCase.verifyError( ...
+                @() validateTransformerConfiguration([struct(), struct()], {'BUS_A', 'BUS_B'}), ...
+                'validateTransformerConfiguration:InvalidTransformer');
+        end
+
     end
 end
 
