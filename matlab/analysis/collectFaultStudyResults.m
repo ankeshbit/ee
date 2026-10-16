@@ -1,5 +1,5 @@
 function [compTable, relayTable] = collectFaultStudyResults( ...
-    anaResults, simResults, cfg, faultStart_s)
+    anaResults, simResults, cfg, faultStart_s, options)
 % collectFaultStudyResults  Combine analytical and simulation results into
 % structured comparison and relay-timing tables for Phase G reporting.
 %
@@ -8,12 +8,14 @@ function [compTable, relayTable] = collectFaultStudyResults( ...
 %   simResults   - Cell array from runDynamicBreakerSwitchingSimulation
 %   cfg          - Struct from createRadialRelayStudyConfiguration
 %   faultStart_s - Fault inception time in seconds (e.g. 0.05)
+%   options      - (Optional) struct with comparison options:
+%                  .relTolPercent - Tolerance % for CurrentMatchPass (default: 5.0)
 %
 % Outputs:
 %   compTable    - Struct array: analytical vs simulated fault-current comparison
 %                  Fields: scenarioId, faultType, analyticalCurrent_A,
 %                  simulatedFundamentalRMS_A, absoluteError_A, percentageError,
-%                  comparisonBasis, simulationStatus
+%                  CurrentMatchPass, comparisonBasis, simulationStatus
 %   relayTable   - Struct array: relay timing cross-validation
 %                  Fields: scenarioId, faultType, Imax_A, M_max,
 %                  analyticalTime_s, simulatedRelayTime_s, timingErrorMs,
@@ -21,6 +23,11 @@ function [compTable, relayTable] = collectFaultStudyResults( ...
 
 if nargin < 4 || isempty(faultStart_s)
     faultStart_s = 0.05;
+end
+
+relTolPercent = 5.0;
+if nargin >= 5 && isstruct(options) && isfield(options, 'relTolPercent') && ~isempty(options.relTolPercent)
+    relTolPercent = options.relTolPercent;
 end
 
 compTable  = [];
@@ -64,6 +71,7 @@ for i = 1:numel(anaResults)
     row.simulatedPeakRMS_A    = NaN;
     row.absoluteError_A       = NaN;
     row.percentageError       = NaN;
+    row.CurrentMatchPass      = false;
     row.validComparison       = false;
     row.comparisonNote        = '';
 
@@ -77,6 +85,9 @@ for i = 1:numel(anaResults)
         row.absoluteError_A        = absErr;
         if ana.faultCurrentMagnitude_A > eps
             row.percentageError    = 100 * absErr / ana.faultCurrentMagnitude_A;
+            row.CurrentMatchPass   = (row.percentageError <= relTolPercent);
+        else
+            row.CurrentMatchPass   = (absErr <= 1e-3);
         end
         row.validComparison        = true;
         row.comparisonNote         = 'Analytical: |I1|*Ibase vs Simulated: max phase RMS';

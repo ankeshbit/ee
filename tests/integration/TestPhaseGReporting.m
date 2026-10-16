@@ -125,6 +125,23 @@ classdef TestPhaseGReporting < matlab.unittest.TestCase
             end
         end
 
+        function testCurrentMatchPassInComparisonTable(tc)
+            simSynthetic = {
+                struct('scenarioId', 'PF_3PH', 'faultType', '3PH', 'status', 'COMPLETED', ...
+                    'analyticalPredictions', struct('I_phaseMax_A', 1874.5)), ... % ~0% error -> pass
+                struct('scenarioId', 'PF_SLG', 'faultType', 'SLG', 'status', 'COMPLETED', ...
+                    'analyticalPredictions', struct('I_phaseMax_A', 3000.0)) ... % large error -> fail
+            };
+            [compTable, ~] = collectFaultStudyResults(tc.anaResults, simSynthetic, tc.cfg, 0.05, struct('relTolPercent', 5.0));
+            tc.verifyTrue(isfield(compTable, 'CurrentMatchPass'), 'comparisonTable must include CurrentMatchPass field.');
+            row3PH = compTable(strcmp({compTable.faultType}, '3PH'));
+            tc.verifyNotEmpty(row3PH);
+            tc.verifyTrue(row3PH.CurrentMatchPass, '3PH with low error must have CurrentMatchPass = true.');
+            rowSLG = compTable(strcmp({compTable.faultType}, 'SLG'));
+            tc.verifyNotEmpty(rowSLG);
+            tc.verifyFalse(rowSLG.CurrentMatchPass, 'SLG with large error must have CurrentMatchPass = false.');
+        end
+
         function testIECOperatingTimeFormula(tc)
             % Direct verification of calculateRelayOperatingTime
             % Standard Inverse: t = 0.14 * TMS / (M^0.02 - 1)

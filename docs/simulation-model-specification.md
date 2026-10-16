@@ -116,8 +116,8 @@ $$R = R_{\text{pu}} \cdot Z_{\text{base}}, \quad X = X_{\text{pu}} \cdot Z_{\tex
 
 1. **Source Grounding:** Solidly grounded neutral at the $33\,\text{kV}$ generation/grid source.
 2. **Transformer Vector Group:**
-   - **Baseline Case (Ynyn0):** Grounded-Wye / Grounded-Wye with both neutral terminals grounded directly. Phase displacement is $0^\circ$, directly matching the analytical sequence-component formulation without additional phase rotation.
-   - **Alternative Case (Dyn11):** Delta primary ($33\,\text{kV}$) with Grounded-Wye secondary ($11\,\text{kV}$). Winding connection causes a $-30^\circ$ phase shift in positive-sequence voltages/currents and blocks zero-sequence current transfer from the $11\,\text{kV}$ side to the $33\,\text{kV}$ side.
+   - **Default System & Simscape Model Baseline (Ynyn0):** Grounded-Wye / Grounded-Wye with both neutral terminals solidly grounded directly (`Winding1Connection = Yg`, `Winding2Connection = Yg`). Phase displacement is $0^\circ$, directly matching the primary analytical sequence-component formulation without additional phase rotation. Both the default master configuration and the physical Simscape dynamic model (`radial_fault_study_network.slx`) are strictly Ynyn0.
+   - **Analytical-Only Option (Dyn11):** Delta primary ($33\,\text{kV}$) with Grounded-Wye secondary ($11\,\text{kV}$). This winding connection is an analytical-only configuration option verified strictly by textbook/hand-calculation unit tests (`TestTransformerNetwork.m`); it causes a $30^\circ$ phase displacement (LV leads HV by $+30^\circ$) and blocks zero-sequence current transfer from the $11\,\text{kV}$ side to the $33\,\text{kV}$ side, and is not modeled or validated in the dynamic Simscape simulation.
 3. **Sequence Impedance Consistency:**
    - Positive sequence: $Z_1 = R_1 + j\omega L_1$
    - Negative sequence: $Z_2 = Z_1$ (for static network elements and transformers)

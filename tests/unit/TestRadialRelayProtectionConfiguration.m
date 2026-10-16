@@ -295,6 +295,98 @@ classdef TestRadialRelayProtectionConfiguration < matlab.unittest.TestCase
                 'checkRelayCoordination:InvalidMinimumCTI');
         end
 
+        function testRelayOperatingTimeMatchesInverseCurveFormula(testCase)
+            % For every RELAY_33KV, RELAY_BUS_A and RELAY_BUS_B result across all buses
+            % and fault types, operatingTime_s must equal calculateRelayOperatingTime
+            % evaluated at (reported primary current / CT ratio) with that relay's settings, within 1e-6.
+            cfg = testCase.config;
+            buses = {'BUS_A', 'BUS_B', 'BUS_11KV'};
+            faultTypes = {'3PH', 'SLG', 'LL', 'DLG'};
+            relays = cfg.relays;
+
+            for bIdx = 1:numel(buses)
+                busId = buses{bIdx};
+                for fIdx = 1:numel(faultTypes)
+                    fType = faultTypes{fIdx};
+                    scn = struct('id', sprintf('TEST_%s_%s', busId, fType), ...
+                        'faultedBus', busId, 'faultType', fType, 'Zf_pu', 0.0);
+                    anaRes = runIntegratedFaultStudy(cfg.network, scn, cfg.relays, cfg.coordinationPairs);
+
+                    for rIdx = 1:numel(anaRes.relayResults)
+                        rr = anaRes.relayResults(rIdx);
+                        relay = relays(strcmp({relays.id}, rr.relayId));
+                        testCase.verifyNotEmpty(relay);
+
+                        if rr.operates
+                            CT_ratio = relay.CTprimary_A / relay.CTsecondary_A;
+                            I_sec_recomputed = rr.faultCurrentPrimary_A / CT_ratio;
+                            testCase.verifyEqual(rr.relayCurrentSecondary_A, I_sec_recomputed, 'RelTol', 1e-12);
+
+                            expected_top = calculateRelayOperatingTime( ...
+                                I_sec_recomputed, relay.pickupCurrent_A, relay.TMS, relay.curveType);
+                            testCase.verifyEqual(rr.operatingTime_s, expected_top, 'AbsTol', 1e-6, ...
+                                sprintf('Relay %s operating time mismatch at %s (%s)', rr.relayId, busId, fType));
+                        else
+                            testCase.verifyTrue(isinf(rr.operatingTime_s), ...
+                                sprintf('Non-operating relay %s must have operatingTime_s == Inf', rr.relayId));
+                        end
+                    end
+                end
+            end
+        end
+
+        function testThreePhaseCurrentEqualsIscPuTimesIbaseForBusVoltage(testCase)
+            % 3PH currents equal Isc_pu * Ibase for the bus's voltage level (recomputed from network)
+            cfg = testCase.config;
+            net = cfg.network;
+            buses = {'BUS_11KV', 'BUS_A', 'BUS_B'};
+
+            for bIdx = 1:numel(buses)
+                busId = buses{bIdx};
+                bus = net.buses(strcmp({net.buses.id}, busId));
+                testCase.verifyNotEmpty(bus);
+
+                % Base current at bus voltage
+                Ibase_A = net.base.SbaseVA / (sqrt(3) * bus.VbaseV);
+
+                % Recompute positive-sequence Thevenin impedance to bus
+                Z1_th = net.source.Z1_pu + net.transformers(1).Z1_pu;
+                if strcmp(busId, 'BUS_A')
+                    bra = net.branches(strcmp({net.branches.id}, 'FEEDER_BRA'));
+                    Z1_th = Z1_th + bra.Z1_pu;
+                elseif strcmp(busId, 'BUS_B')
+                    bra = net.branches(strcmp({net.branches.id}, 'FEEDER_BRA'));
+                    brb = net.branches(strcmp({net.branches.id}, 'FEEDER_BRB'));
+                    Z1_th = Z1_th + bra.Z1_pu + brb.Z1_pu;
+                end
+
+                % Recompute Isc_pu and expected current in Amperes
+                Vth = net.source.Vth_pu;
+                Isc_pu = abs(Vth / Z1_th);
+                expectedFaultCurrent_A = Isc_pu * Ibase_A;
+
+                scn = struct('id', ['SCN_3PH_', busId], 'faultedBus', busId, 'faultType', '3PH', 'Zf_pu', 0.0);
+                res = runIntegratedFaultStudy(net, scn, cfg.relays, cfg.coordinationPairs);
+
+                testCase.verifyEqual(res.faultCurrentMagnitude_pu, Isc_pu, 'RelTol', 1e-10);
+                testCase.verifyEqual(res.faultCurrentMagnitude_A, expectedFaultCurrent_A, 'RelTol', 1e-10, ...
+                    sprintf('3PH fault current mismatch at %s', busId));
+            end
+        end
+
+        function testDefaultTransformerConnectionMatchesSimscapeModelBuilder(testCase)
+            % The master config and Simscape builder script must both define grounded-wye / grounded-wye (Ynyn0)
+            masterCfg = getSystemMasterConfiguration();
+            testCase.verifyEqual(masterCfg.transformer.windingConnection, 'grounded-wye-grounded-wye');
+
+            % Verify builder script contents
+            builderFile = fullfile(testCase.repoRoot, 'scripts', 'build_radial_fault_model.m');
+            testCase.verifyTrue(exist(builderFile, 'file') == 2);
+            content = fileread(builderFile);
+            testCase.verifySubstring(content, '''Winding1Connection'', ''ee.enum.windingconnection.Yg''');
+            testCase.verifySubstring(content, '''Winding2Connection'', ''ee.enum.windingconnection.Yg''');
+        end
+
     end
 
 end
