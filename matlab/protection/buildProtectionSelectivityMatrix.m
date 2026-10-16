@@ -52,9 +52,21 @@ for index = 1:numel(phasorStudy.relayMeasurements)
         end
     end
     if ~isempty(failureTable)
+        isPrimary = strcmp(failureTable.primaryRelayId, row.relayId);
+        isBackup = false(height(failureTable), 1);
+        if ismember('backupRelayIds', failureTable.Properties.VariableNames)
+            backupCol = failureTable.backupRelayIds;
+            for bIdx = 1:height(failureTable)
+                if iscell(backupCol)
+                    entry = backupCol{bIdx};
+                else
+                    entry = backupCol(bIdx);
+                end
+                isBackup(bIdx) = matchesRelayId(entry, row.relayId);
+            end
+        end
         match = strcmp(failureTable.scenarioId, row.scenarioId) & ...
-            (strcmp(failureTable.primaryRelayId, row.relayId) | ...
-            any(strcmp(failureTable.backupRelayIds, row.relayId)));
+            (isPrimary | isBackup);
         if any(match)
             source = failureTable(find(match, 1), :);
             row.breakerFailureStatus = source.overallStatus;
@@ -92,5 +104,22 @@ if isempty(values)
     value = NaN;
 else
     value = max(abs(values(:)));
+end
+end
+
+function tf = matchesRelayId(ids, targetRelayId)
+if isempty(ids)
+    tf = false;
+    return;
+end
+if iscell(ids) && isscalar(ids) && (iscell(ids{1}) || isstring(ids{1}))
+    ids = ids{1};
+end
+if ischar(ids)
+    tf = strcmp(ids, targetRelayId);
+elseif iscell(ids) || isstring(ids)
+    tf = any(strcmp(ids, targetRelayId));
+else
+    tf = false;
 end
 end
