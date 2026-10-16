@@ -273,23 +273,24 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
                 isApplicable = false;
                 coordStatus = 'Not applicable to this fault location';
             elseif isfinite(t_pri) && isfinite(t_bku)
-                CTI_s = t_bku - t_pri;
-                margin_s = t_bku - t_pri_clr;
+                priBreakerDelay = priRelayEval.breakerDelay_s;
+                CTI_s = computeCoordinationMargin(t_bku, t_pri, 0);
+                margin_s = computeCoordinationMargin(t_bku, t_pri, priBreakerDelay);
                 isCoordinated = (CTI_s >= pair.minimumCTI_s);
                 coordStatus = ternary(isCoordinated, 'COORDINATED', 'CTI_VIOLATION');
             elseif ~isfinite(t_pri) && ~isfinite(t_bku)
-                CTI_s = Inf;
-                margin_s = Inf;
+                CTI_s = NaN;
+                margin_s = NaN;
                 isCoordinated = false;
                 coordStatus = 'NEITHER_OPERATES';
             elseif ~isfinite(t_pri)
-                CTI_s = Inf;
-                margin_s = Inf;
+                CTI_s = NaN;
+                margin_s = NaN;
                 isCoordinated = false;
                 coordStatus = 'PRIMARY_DOES_NOT_OPERATE';
             else
-                CTI_s = Inf;
-                margin_s = Inf;
+                CTI_s = NaN;
+                margin_s = NaN;
                 isCoordinated = false;
                 coordStatus = 'BACKUP_DOES_NOT_OPERATE';
             end
@@ -389,8 +390,8 @@ function bfResult = evaluateBreakerFailureForScenario(sDef, relayEvals, config)
             'backupRelayId', dispBackupId, ...
             'primaryOperatingTime_s', priEval.operatingTime_s, ...
             'backupOperatingTime_s', bkuEval.operatingTime_s, ...
-            'CTI_s', Inf, ...
-            'clearingTimeMargin_s', Inf, ...
+            'CTI_s', NaN, ...
+            'clearingTimeMargin_s', NaN, ...
             'overallStatus', 'HEALTHY_INACTIVE', ...
             'clearingMechanism', 'NO_ACTION_REQUIRED');
         return;
@@ -408,20 +409,20 @@ function bfResult = evaluateBreakerFailureForScenario(sDef, relayEvals, config)
     if isempty(backupRelayId)
         backupClearingTime_s = Inf;
         bfStatus = 'NO_BACKUP_PROTECTION';
-        cti = Inf;
-        margin = Inf;
+        cti = NaN;
+        margin = NaN;
         mechanism = 'No backup protection configured for this zone';
     elseif bkuEval.operatingTime_s < Inf
         backupClearingTime_s = bkuEval.totalClearingTime_s;
         bfStatus = 'CLEARED_BY_BACKUP_PROTECTION';
-        cti = bkuEval.operatingTime_s - priEval.operatingTime_s;
-        margin = bkuEval.operatingTime_s - priEval.totalClearingTime_s;
+        cti = computeCoordinationMargin(bkuEval.operatingTime_s, priEval.operatingTime_s, 0);
+        margin = computeCoordinationMargin(bkuEval.operatingTime_s, priEval.operatingTime_s, priEval.breakerDelay_s);
         mechanism = sprintf('Backup cleared in %.4f s', backupClearingTime_s);
     else
         backupClearingTime_s = Inf;
         bfStatus = 'NOT_CLEARED_BY_MODELED_PROTECTION';
-        cti = Inf;
-        margin = Inf;
+        cti = NaN;
+        margin = NaN;
         mechanism = 'Backup protection does not operate';
     end
 

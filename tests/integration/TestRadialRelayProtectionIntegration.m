@@ -92,8 +92,8 @@ classdef TestRadialRelayProtectionIntegration < matlab.unittest.TestCase
                 p = sHlt.coordination(pIdx);
                 testCase.verifyEqual(p.coordinationStatus, 'NEITHER_OPERATES');
                 testCase.verifyFalse(p.isCoordinated);
-                testCase.verifyTrue(isinf(p.CTI_s));
-                testCase.verifyTrue(isinf(p.clearingTimeMargin_s));
+                testCase.verifyTrue(isnan(p.CTI_s));
+                testCase.verifyTrue(isnan(p.clearingTimeMargin_s));
             end
         end
 

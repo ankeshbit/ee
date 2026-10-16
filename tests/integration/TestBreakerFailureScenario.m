@@ -26,6 +26,28 @@ classdef TestBreakerFailureScenario < matlab.unittest.TestCase
                 result.primaryRelayOperatingTime_s, 'AbsTol', 1e-12);
         end
 
+        function testClearingTimeMarginIsFiniteAndNonNegativeOnBreakerFailure(testCase)
+            [fault, zones, relays, breakers] = caseData();
+            result = evaluateBreakerFailureScenario( ...
+                fault, zones, relays, breakers, failure('primary_failed', 'CB_B'));
+            testCase.verifyEqual(result.overallStatus, 'CLEARED_BY_BACKUP_PROTECTION');
+            testCase.verifyTrue(isfinite(result.clearingTimeMargin_s), ...
+                'clearingTimeMargin_s must be finite and never -Inf');
+            nominalPrimaryClear = result.primaryRelayOperatingTime_s + result.primaryBreakerOpeningDelay_s;
+            expectedMargin = result.backupRelayOperatingTime_s - nominalPrimaryClear;
+            testCase.verifyEqual(result.clearingTimeMargin_s, expectedMargin, 'AbsTol', 1e-12);
+        end
+
+        function testMarginAndCTIAreNaNWhenRelaysDoNotOperate(testCase)
+            [fault, zones, relays, breakers] = caseData();
+            fault.relayResults(1).operatingTime_s = Inf;
+            fault.relayResults(1).operates = false;
+            result = evaluateBreakerFailureScenario( ...
+                fault, zones, relays, breakers, failure('normal', ''));
+            testCase.verifyTrue(isnan(result.relayCTI_s), 'CTI must be NaN when relay does not operate');
+            testCase.verifyTrue(isnan(result.clearingTimeMargin_s), 'Margin must be NaN when relay does not operate');
+        end
+
         function testBackupDoesNotPickUp(testCase)
             [fault, zones, relays, breakers] = caseData();
             relays(1).pickupCurrent_A = 1e6;

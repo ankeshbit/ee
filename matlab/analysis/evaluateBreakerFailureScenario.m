@@ -23,8 +23,8 @@ result.primaryClearingTime_s = Inf;
 result.backupRelayOperatingTime_s = Inf;
 result.backupBreakerOpeningDelay_s = [];
 result.backupClearingTime_s = Inf;
-result.relayCTI_s = Inf;
-result.clearingTimeMargin_s = Inf;
+result.relayCTI_s = NaN;
+result.clearingTimeMargin_s = NaN;
 result.minimumRequiredMargin_s = [];
 result.primaryPicksUp = false;
 result.primaryBreakerClears = false;
@@ -122,10 +122,11 @@ result.backupClearingTime_s = calculateBreakerClearingTime( ...
     best.relay.operatingTime_s, best.breaker.openingDelay_s).totalClearingTime_s;
 result.backupOperates = true;
 result.directionalStatus = best.direction;
-result.relayCTI_s = best.relay.operatingTime_s - ...
-    result.primaryRelayOperatingTime_s;
-result.clearingTimeMargin_s = best.relay.operatingTime_s - ...
-    result.primaryClearingTime_s;
+result.relayCTI_s = computeCoordinationMargin( ...
+    best.relay.operatingTime_s, result.primaryRelayOperatingTime_s, 0);
+result.clearingTimeMargin_s = computeCoordinationMargin( ...
+    best.relay.operatingTime_s, result.primaryRelayOperatingTime_s, ...
+    result.primaryBreakerOpeningDelay_s);
 result.overallStatus = 'CLEARED_BY_BACKUP_PROTECTION';
 result.reason = 'Primary breaker failed; configured backup protection cleared the fault.';
 end
