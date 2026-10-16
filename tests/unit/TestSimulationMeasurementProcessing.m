@@ -113,6 +113,32 @@ classdef TestSimulationMeasurementProcessing < matlab.unittest.TestCase
             testCase.verifyEqual(abs(phasorResult.sequencePhasors.V0), 0.0, 'AbsTol', 1.0);
         end
 
+        function testFloatingPointCycleCountSweep(testCase)
+            f0 = 50;
+            T = 1 / f0;
+            dt = 1e-4;
+            faultTimes = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30];
+
+            % 1. Default case explicitly: fault 0.05, stop 0.15, dt 1e-4
+            tDefault = (0:dt:0.15)';
+            wDefault = validateMeasurementWindow(tDefault, 0.05, f0);
+            testCase.verifyTrue(wDefault.isValid, 'Default case must be valid');
+            testCase.verifyEqual(wDefault.numCycles, 4, 'Default case must have exactly 4 full cycles');
+
+            % 2. Sweep across fault times and full cycles
+            for ft = faultTimes
+                for nc = 1:10
+                    stopTime = ft + (1 + nc) * T;
+                    tSweep = (0:dt:stopTime)';
+                    wSweep = validateMeasurementWindow(tSweep, ft, f0);
+                    testCase.verifyTrue(wSweep.isValid, ...
+                        sprintf('Window must be valid for faultTime=%.2f, nc=%d', ft, nc));
+                    testCase.verifyEqual(wSweep.numCycles, nc, ...
+                        sprintf('Cycle count mismatch for faultTime=%.2f, nc=%d', ft, nc));
+                end
+            end
+        end
+
     end
 
 end

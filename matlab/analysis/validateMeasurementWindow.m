@@ -129,7 +129,7 @@ function window = validateMeasurementWindow(time_s, faultInsertionTime_s, system
     end
 
     availableDuration = t_max - steadyStart_t;
-    numFullCycles = floor(availableDuration / T);
+    numFullCycles = floor(availableDuration / T + 1e-9);
 
     if numFullCycles < minCyclesForWindow
         window.warningMessage = sprintf( ...
@@ -139,7 +139,7 @@ function window = validateMeasurementWindow(time_s, faultInsertionTime_s, system
     end
 
     steadyEnd_t = steadyStart_t + (numFullCycles * T);
-    steadyIdx = find(time_s >= steadyStart_t & time_s <= steadyEnd_t);
+    steadyIdx = find(time_s >= steadyStart_t & time_s <= steadyEnd_t + 1e-9 * T);
 
     if numel(steadyIdx) < (numFullCycles * minSamplesPerCycle)
         window.warningMessage = 'Insufficient samples in designated steady-state window.';
