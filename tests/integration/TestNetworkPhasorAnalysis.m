@@ -139,6 +139,14 @@ classdef TestNetworkPhasorAnalysis < matlab.unittest.TestCase
                 end
             end
         end
+
+        function testEmptyRelaysSucceedsAndProducesEmptyMeasurements(testCase)
+            network = createIllustrativeBranchedTransformerRadialNetwork();
+            scenario = caseScenario('B3_no_relays', 'BUS_B', 'three phase', 0);
+            result = calculateNetworkPhasors(network, scenario, []);
+            testCase.verifyTrue(isstruct(result.relayMeasurements));
+            testCase.verifyEmpty(result.relayMeasurements);
+        end
     end
 end
 
