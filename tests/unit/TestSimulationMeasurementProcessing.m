@@ -139,6 +139,29 @@ classdef TestSimulationMeasurementProcessing < matlab.unittest.TestCase
             end
         end
 
+        function testVerifyFaultClearingSlidingRMS(testCase)
+            f0 = 50;
+            dt = 1e-4;
+            t = (0:dt:0.5)';
+            tFault = 0.05;
+            openTimeB = 0.10;
+            thresh = 0.01;
+
+            % 1. Uncleared 1000 A single-phase sinusoid (phase A active, B and C zero)
+            iUncleared = [1000 * sqrt(2) * sin(2*pi*f0*t), zeros(numel(t), 2)];
+            cvUncleared = verifyFaultClearing(t, iUncleared, tFault, openTimeB, NaN, thresh);
+            testCase.verifyFalse(cvUncleared.faultCleared, ...
+                'Uncleared 1000 A single-phase sinusoid must not be detected as cleared');
+
+            % 2. Current that actually goes to zero after breaker opens
+            iCleared = iUncleared;
+            iCleared(t >= openTimeB + 0.01, :) = 0;
+            cvCleared = verifyFaultClearing(t, iCleared, tFault, openTimeB, NaN, thresh);
+            testCase.verifyTrue(cvCleared.faultCleared, ...
+                'Current that actually goes to zero must be detected as cleared');
+            testCase.verifyFalse(isnan(cvCleared.extinctionTime_s));
+        end
+
     end
 
 end

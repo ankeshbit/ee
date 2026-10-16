@@ -328,34 +328,7 @@ function [tripTime, openTime, statusStr] = p_detectRelay(t, tripCmd, brkState, t
 end
 
 function cv = p_verifyClearing(t, iBusB, tFault, openTimeB, openTimeA, thresh)
-    iRMS3 = sqrt(sum(iBusB.^2, 2) / 3);
-    faultCleared  = false;
-    extinctTime   = NaN;
-    postPeak      = max(abs(iBusB(t > tFault + 0.01, :)), [], 'all');
-
-    bestOpen = min([openTimeB, openTimeA], [], 'omitnan');
-    if ~isnan(bestOpen)
-        postClearMask = t > bestOpen + 0.01;
-        if any(postClearMask)
-            low = iRMS3(postClearMask) < thresh;
-            if any(low)
-                idx = find(postClearMask, 1) + find(low, 1) - 1;
-                extinctTime  = t(idx);
-                faultCleared = true;
-                postExtMask  = t > extinctTime & t <= extinctTime + 0.04;
-                if any(postExtMask)
-                    postPeak = max(abs(iBusB(postExtMask, :)), [], 'all');
-                else
-                    postPeak = 0;
-                end
-            end
-        end
-    end
-
-    cv = struct('faultCleared',              faultCleared, ...
-                'extinctionTime_s',          extinctTime, ...
-                'postClearingCurrentPeak_A', postPeak, ...
-                'extinctionThreshold_A',     thresh);
+    cv = verifyFaultClearing(t, iBusB, tFault, openTimeB, openTimeA, thresh);
 end
 
 function ap = p_analyticalPredictions(t, iBusB, window, isHealthy)
