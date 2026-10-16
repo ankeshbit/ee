@@ -30,10 +30,10 @@ else
     if ismember('isApplicable', study.coordinationTable.Properties.VariableNames)
         appMask = study.coordinationTable.isApplicable;
         report.failedCoordination = study.coordinationTable( ...
-            appMask & ~study.coordinationTable.isCoordinated, :);
+            appMask & (study.coordinationTable.isCoordinated == 0), :);
     else
         report.failedCoordination = study.coordinationTable( ...
-            ~study.coordinationTable.isCoordinated, :);
+            study.coordinationTable.isCoordinated == 0, :);
     end
 end
 if isempty(study.relayTable)

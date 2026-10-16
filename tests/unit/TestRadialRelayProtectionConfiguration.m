@@ -120,6 +120,44 @@ classdef TestRadialRelayProtectionConfiguration < matlab.unittest.TestCase
             testCase.verifyFalse(isAllCoordinated, 'Overall coordination must be false when an applicable pair fails');
         end
 
+        function testOverallCoordinationStatusOnlyNonApplicable(testCase)
+            % (i) only non-applicable pairs -> overall status is explicit 'NOT_APPLICABLE', not 'COORDINATED'
+            pairs = [ ...
+                struct('pairId', 'P1', 'isApplicable', false, 'isCoordinated', NaN), ...
+                struct('pairId', 'P2', 'isApplicable', false, 'isCoordinated', NaN) ...
+            ];
+            status = computeOverallCoordinationStatus(pairs);
+            testCase.verifyEqual(status, 'NOT_APPLICABLE', ...
+                'Only non-applicable pairs must produce overall status NOT_APPLICABLE');
+        end
+
+        function testOverallCoordinationStatusOneApplicablePassOneNonApplicable(testCase)
+            % (ii) one applicable pass + one non-applicable -> COORDINATED
+            pairs = [ ...
+                struct('pairId', 'P1', 'isApplicable', true,  'isCoordinated', true), ...
+                struct('pairId', 'P2', 'isApplicable', false, 'isCoordinated', NaN) ...
+            ];
+            status = computeOverallCoordinationStatus(pairs);
+            testCase.verifyEqual(status, 'COORDINATED', ...
+                'One applicable pass + one non-applicable must produce overall status COORDINATED');
+        end
+
+        function testCoordinationTableAndCSVExportWithNaN(testCase)
+            % (iii) table and CSV export do not error when isCoordinated contains NaN
+            pairs = [ ...
+                struct('pairId', 'P1', 'isApplicable', true,  'isCoordinated', true,  'CTI_s', 0.4), ...
+                struct('pairId', 'P2', 'isApplicable', false, 'isCoordinated', NaN,   'CTI_s', NaN) ...
+            ];
+            t = struct2table(pairs);
+            testCase.verifyTrue(istable(t));
+            tmpCsv = [tempname, '.csv'];
+            c = onCleanup(@() cleanupFile(tmpCsv));
+            writetable(t, tmpCsv);
+            testCase.verifyTrue(exist(tmpCsv, 'file') > 0);
+            csvText = fileread(tmpCsv);
+            testCase.verifyTrue(contains(csvText, 'NaN'));
+        end
+
         function testCTRatioConversion(testCase)
             % Test CT ratio conversion consistency
             pri_A = 1872.22;
@@ -259,4 +297,10 @@ classdef TestRadialRelayProtectionConfiguration < matlab.unittest.TestCase
 
     end
 
+end
+
+function cleanupFile(filePath)
+    if exist(filePath, 'file')
+        delete(filePath);
+    end
 end
