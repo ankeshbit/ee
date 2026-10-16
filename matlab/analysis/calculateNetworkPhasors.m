@@ -74,8 +74,8 @@ end
 end
 
 function results = busPhasors(network, path, Vth, Iseq)
-% Dyn11 vector group: High-voltage leads Low-voltage by +30 deg (+pi/6 rad) in positive sequence
-DELTA_WYE_PHASE_SHIFT_RAD = pi / 6;
+% Dyn11 vector group: Low-voltage leads High-voltage by +30 deg (+pi/6 rad) in positive sequence
+DELTA_WYE_PHASE_SHIFT_RAD = -pi / 6;
 
 deltaWyeIdx = find(strcmp({path.type}, 'transformer') & ...
     strcmpi(strtrim({path.windingConnection}), 'delta-grounded-wye'), 1);
@@ -123,8 +123,8 @@ end
 end
 
 function results = relayPhasors(network, path, relays, Vth, Iseq)
-% Dyn11 vector group: High-voltage leads Low-voltage by +30 deg (+pi/6 rad) in positive sequence
-DELTA_WYE_PHASE_SHIFT_RAD = pi / 6;
+% Dyn11 vector group: Low-voltage leads High-voltage by +30 deg (+pi/6 rad) in positive sequence
+DELTA_WYE_PHASE_SHIFT_RAD = -pi / 6;
 
 deltaWyeIdx = find(strcmp({path.type}, 'transformer') & ...
     strcmpi(strtrim({path.windingConnection}), 'delta-grounded-wye'), 1);

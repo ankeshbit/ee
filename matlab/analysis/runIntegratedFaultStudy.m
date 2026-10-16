@@ -111,8 +111,10 @@ end
 end
 
 function relayResults = evaluateRelays(relays, pathElements, faultCurrent_pu, network, faultType, sequenceCurrents_pu)
-% Dyn11 vector group: High-voltage leads Low-voltage by +30 deg (+pi/6 rad) in positive sequence
-DELTA_WYE_PHASE_SHIFT_RAD = pi / 6;
+% Dyn11 vector group: Low-voltage leads High-voltage by +30 deg (+pi/6 rad) in positive sequence
+% Therefore, HV positive-sequence lags LV: I1_HV = I1 * exp(-j*30deg)
+% and HV negative-sequence leads LV: I2_HV = I2 * exp(+j*30deg)
+DELTA_WYE_PHASE_SHIFT_RAD = -pi / 6;
 
 relayResults = repmat(struct( ...
     'relayId', '', 'protectedBranch', '', 'measurementElementType', '', ...

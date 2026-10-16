@@ -276,6 +276,66 @@ classdef TestTransformerNetwork < matlab.unittest.TestCase
                 'Relays on grounded wye side must report non-zero I0');
         end
 
+        function testDyn11PhaseShiftSignAndOppositeRotation(testCase)
+            % Dyn11: Low-voltage LEADS High-voltage by +30 deg (+pi/6 rad) in positive sequence
+            % Therefore, angle(Ia_LV) - angle(Ia_HV) = +30 degrees for a balanced 3PH fault.
+            % Negative sequence must rotate in the opposite direction (-30 deg vs +30 deg).
+            network = createIllustrativeTransformerRadialNetwork();
+            network.transformers.windingConnection = 'delta-grounded-wye';
+            network.transformers.grounding = 'low neutral grounded';
+
+            % 1. Three-phase fault test (pure positive sequence)
+            scn3ph = struct('id', '3ph_lv', 'faultedBus', 'BUS_11KV', ...
+                'faultType', 'three phase', 'Zf_pu', 0);
+            res = runIntegratedFaultStudy(network, scn3ph, relaySet(), []);
+            Ia_LV = res.phaseCurrents_pu(1);
+
+            % Calculate phasors across the network to inspect HV and LV relay currents
+            measRelays = struct( ...
+                'id', {'R_HV', 'R_LV'}, ...
+                'measurementElementType', {'transformer', 'transformer'}, ...
+                'measurementElementId', {'T1', 'T1'}, ...
+                'measurementSide', {'high', 'low'}, ...
+                'pickupCurrent_A', {1, 1}, ...
+                'TMS', {1, 1}, ...
+                'curveType', {'Very Inverse', 'Very Inverse'}, ...
+                'CTprimary_A', {1000, 400}, ...
+                'CTsecondary_A', {5, 5});
+            phasors = calculateNetworkPhasors(network, scn3ph, measRelays);
+            hvRelay = phasors.relayMeasurements(strcmp({phasors.relayMeasurements.relayId}, 'R_HV'));
+            lvRelay = phasors.relayMeasurements(strcmp({phasors.relayMeasurements.relayId}, 'R_LV'));
+
+            Ia_HV = hvRelay.phaseCurrents_pu(1);
+            Ia_LV_meas = lvRelay.phaseCurrents_pu(1);
+
+            % Angular difference wrapped to [-pi, pi]
+            angDiff_deg = rad2deg(angle(Ia_LV_meas * conj(Ia_HV)));
+            testCase.verifyEqual(angDiff_deg, 30.0, 'AbsTol', 1e-9, ...
+                'Dyn11 convention requires LV to lead HV by +30 degrees');
+
+            % 2. Sequence component rotation check
+            % Positive sequence on HV must lag LV by 30 deg (angle(I1_LV) - angle(I1_HV) = +30 deg)
+            % Negative sequence on HV must lead LV by 30 deg (angle(I2_LV) - angle(I2_HV) = -30 deg)
+            scnLL = struct('id', 'll_lv', 'faultedBus', 'BUS_11KV', ...
+                'faultType', 'LL', 'Zf_pu', 0);
+            phasorsLL = calculateNetworkPhasors(network, scnLL, measRelays);
+            hvLL = phasorsLL.relayMeasurements(strcmp({phasorsLL.relayMeasurements.relayId}, 'R_HV'));
+            lvLL = phasorsLL.relayMeasurements(strcmp({phasorsLL.relayMeasurements.relayId}, 'R_LV'));
+
+            I1_LV = lvLL.sequenceCurrents_pu(2);
+            I1_HV = hvLL.sequenceCurrents_pu(2);
+            I2_LV = lvLL.sequenceCurrents_pu(3);
+            I2_HV = hvLL.sequenceCurrents_pu(3);
+
+            diffI1_deg = rad2deg(angle(I1_LV * conj(I1_HV)));
+            diffI2_deg = rad2deg(angle(I2_LV * conj(I2_HV)));
+
+            testCase.verifyEqual(diffI1_deg, 30.0, 'AbsTol', 1e-9, ...
+                'Positive sequence must rotate by -30 deg from LV to HV (LV leads by +30 deg)');
+            testCase.verifyEqual(diffI2_deg, -30.0, 'AbsTol', 1e-9, ...
+                'Negative sequence must rotate in opposite direction (+30 deg from LV to HV)');
+        end
+
         function testNonStructTransformerThrowsInvalidTransformer(testCase)
             testCase.verifyError( ...
                 @() validateTransformerConfiguration(123, {'BUS_A', 'BUS_B'}), ...
