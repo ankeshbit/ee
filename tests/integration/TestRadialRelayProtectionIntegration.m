@@ -194,6 +194,41 @@ classdef TestRadialRelayProtectionIntegration < matlab.unittest.TestCase
             testCase.verifyEqual(study1.coordinationTable.margin_s, study2.coordinationTable.margin_s);
         end
 
+        function testRelay33KVConsistencyBetweenStudyAndEvaluation(testCase)
+            % Single source of truth: evaluateRadialProtectionScenarios and
+            % runIntegratedFaultStudy must agree on RELAY_33KV primary currents
+            % and operating times across all fault types and faultable buses.
+            cfg = testCase.config;
+            buses = {'BUS_A', 'BUS_B'};
+            ftypes = {'3PH', 'SLG', 'LL', 'DLG'};
+            fnames = {'three phase', 'SLG', 'LL', 'DLG'};
+
+            for bi = 1:numel(buses)
+                busId = buses{bi};
+                for fi = 1:numel(ftypes)
+                    ft = ftypes{fi};
+                    fn = fnames{fi};
+
+                    % 1. Authoritative analytical calculation
+                    scnAna = struct('id', ['TEST_', busId, '_', ft], 'faultedBus', busId, ...
+                        'faultType', fn, 'Zf_pu', 0);
+                    resAna = runIntegratedFaultStudy(cfg.network, scnAna, cfg.relays, cfg.coordinationPairs);
+                    r33_ana = resAna.relayResults(strcmp({resAna.relayResults.relayId}, 'RELAY_33KV'));
+
+                    % 2. Multi-scenario protection evaluation (analytical mode)
+                    evalOpts = struct('quiet', true, 'useSimulatedCurrents', false, ...
+                        'scenarios', {{struct('id', ft, 'faultType', ft, 'faultedBus', busId, 'isFault', true)}});
+                    evalStudy = evaluateRadialProtectionScenarios([], cfg, evalOpts);
+                    r33_eval = evalStudy.relayTable(strcmp(evalStudy.relayTable.relayId, 'RELAY_33KV'), :);
+
+                    testCase.verifyEqual(r33_eval.I_primary_A, r33_ana.faultCurrentPrimary_A, ...
+                        'AbsTol', 1e-3, sprintf('RELAY_33KV current mismatch at %s %s', busId, ft));
+                    testCase.verifyEqual(r33_eval.operatingTime_s, r33_ana.operatingTime_s, ...
+                        'AbsTol', 1e-4, sprintf('RELAY_33KV operating time mismatch at %s %s', busId, ft));
+                end
+            end
+        end
+
     end
 
 end

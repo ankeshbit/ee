@@ -44,14 +44,18 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
     validateProtectionZones(config.zones, config.network, config.relays, config.breakers);
     studyResult.zoneValidation = struct('status', 'VALID', 'message', 'Protection zones validated successfully.');
 
-    % Define standard study scenario list
-    scenarioDefs = {
-        struct('id', '3PH',     'faultType', '3PH',     'faultedBus', 'BUS_B', 'isFault', true);
-        struct('id', 'SLG',     'faultType', 'SLG',     'faultedBus', 'BUS_B', 'isFault', true);
-        struct('id', 'LL',      'faultType', 'LL',      'faultedBus', 'BUS_B', 'isFault', true);
-        struct('id', 'DLG',     'faultType', 'DLG',     'faultedBus', 'BUS_B', 'isFault', true);
-        struct('id', 'HEALTHY', 'faultType', 'HEALTHY', 'faultedBus', 'BUS_B', 'isFault', false)
-    };
+    % Define standard study scenario list (allow override via options.scenarios)
+    if isfield(options, 'scenarios') && ~isempty(options.scenarios)
+        scenarioDefs = options.scenarios;
+    else
+        scenarioDefs = {
+            struct('id', '3PH',     'faultType', '3PH',     'faultedBus', 'BUS_B', 'isFault', true);
+            struct('id', 'SLG',     'faultType', 'SLG',     'faultedBus', 'BUS_B', 'isFault', true);
+            struct('id', 'LL',      'faultType', 'LL',      'faultedBus', 'BUS_B', 'isFault', true);
+            struct('id', 'DLG',     'faultType', 'DLG',     'faultedBus', 'BUS_B', 'isFault', true);
+            struct('id', 'HEALTHY', 'faultType', 'HEALTHY', 'faultedBus', 'BUS_B', 'isFault', false)
+        };
+    end
 
     allRelayRows = struct([]);
     allCoordRows = struct([]);
@@ -77,23 +81,47 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
                 masterCfg = getSystemMasterConfiguration();
                 IBusB_primary_A = masterCfg.load.power_W.value / (sqrt(3) * masterCfg.load.voltage_V.value);
             end
+        end
+
+        % Establish single source of truth using runIntegratedFaultStudy
+        if strcmp(sDef.faultType, 'HEALTHY')
+            masterCfg = getSystemMasterConfiguration();
+            anaRes = struct('faultCurrentMagnitude_A', ...
+                masterCfg.load.power_W.value / (sqrt(3) * masterCfg.load.voltage_V.value), ...
+                'relayResults', repmat(struct('relayId', '', 'faultCurrentPrimary_A', 0, ...
+                'isOnFaultPath', false), 1, numel(config.relays)));
+            for rIdx = 1:numel(config.relays)
+                rLocBus = config.relays(rIdx).locationBus;
+                busObj = config.network.buses(strcmp({config.network.buses.id}, rLocBus));
+                anaRes.relayResults(rIdx).relayId = config.relays(rIdx).id;
+                anaRes.relayResults(rIdx).faultCurrentPrimary_A = ...
+                    masterCfg.load.power_W.value / (sqrt(3) * busObj.VbaseV);
+            end
+            if ~isSimulated
+                IBusB_primary_A = anaRes.faultCurrentMagnitude_A;
+            end
         else
-            % Analytical baseline derived dynamically from network configuration
-            if strcmp(sDef.faultType, 'HEALTHY')
-                masterCfg = getSystemMasterConfiguration();
-                IBusB_primary_A = masterCfg.load.power_W.value / (sqrt(3) * masterCfg.load.voltage_V.value);
-            else
-                anaScn = struct('id', ['ANA_', sDef.id], 'faultedBus', sDef.faultedBus, ...
-                    'faultType', sDef.faultType, 'Zf_pu', 0.0);
-                anaRes = runIntegratedFaultStudy(config.network, anaScn, config.relays, config.coordinationPairs);
+            anaScn = struct('id', ['ANA_', sDef.id], 'faultedBus', sDef.faultedBus, ...
+                'faultType', sDef.faultType, 'Zf_pu', 0.0);
+            anaRes = runIntegratedFaultStudy(config.network, anaScn, config.relays, config.coordinationPairs);
+            if ~isSimulated
                 IBusB_primary_A = anaRes.faultCurrentMagnitude_A;
             end
         end
 
-        % In radial feeder: Bus A through-current equals Bus B current
-        IBusA_primary_A = IBusB_primary_A;
-        % 33 kV HV through-current equals 11 kV current transformed by (11 kV / 33 kV)
-        I33kV_primary_A = IBusB_primary_A / 3.0;
+        % Derive primary and backup relays dynamically from zone configuration
+        primaryRelayId = '';
+        backupRelayIds = {};
+        if isfield(config, 'zones')
+            for zIdx = 1:numel(config.zones)
+                z = config.zones(zIdx);
+                if isfield(z, 'applicableFaultedBuses') && any(strcmp(cellstr(z.applicableFaultedBuses), sDef.faultedBus))
+                    primaryRelayId = char(z.primaryRelayId);
+                    backupRelayIds = cellstr(z.backupRelayIds);
+                    break;
+                end
+            end
+        end
 
         % 2. Evaluate Each Relay
         numRelays = numel(config.relays);
@@ -103,20 +131,41 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
             relay = config.relays(rIdx);
             breaker = config.breakers(strcmp({config.breakers.id}, relay.breakerId));
 
-            % Measurement mapping respecting network topology
-            switch relay.locationBus
-                case 'BUS_B'
+            anaRelayRes = anaRes.relayResults(strcmp({anaRes.relayResults.relayId}, relay.id));
+
+            if isSimulated
+                if strcmp(relay.locationBus, 'BUS_B')
                     I_pri = IBusB_primary_A;
-                    role = ternary(sDef.isFault, 'PRIMARY', 'NOT_APPLICABLE');
-                case 'BUS_A'
-                    I_pri = IBusA_primary_A;
-                    role = ternary(sDef.isFault, 'BACKUP', 'NOT_APPLICABLE');
-                case 'SOURCE_33KV'
-                    I_pri = I33kV_primary_A;
-                    role = ternary(sDef.isFault, 'REMOTE_BACKUP', 'NOT_APPLICABLE');
-                otherwise
-                    I_pri = 0;
-                    role = 'UNASSIGNED';
+                elseif strcmp(relay.locationBus, 'BUS_A')
+                    if strcmp(sDef.faultedBus, 'BUS_B')
+                        I_pri = IBusB_primary_A;
+                    else
+                        I_pri = anaRelayRes.faultCurrentPrimary_A;
+                    end
+                elseif strcmp(relay.locationBus, 'SOURCE_33KV')
+                    if anaRes.faultCurrentMagnitude_A > 0
+                        I_pri = IBusB_primary_A * (anaRelayRes.faultCurrentPrimary_A / anaRes.faultCurrentMagnitude_A);
+                    else
+                        I_pri = anaRelayRes.faultCurrentPrimary_A;
+                    end
+                else
+                    I_pri = anaRelayRes.faultCurrentPrimary_A;
+                end
+            else
+                I_pri = anaRelayRes.faultCurrentPrimary_A;
+            end
+
+            % Dynamic role assignment respecting network topology and protection zones
+            if ~sDef.isFault
+                role = 'NOT_APPLICABLE';
+            elseif strcmp(relay.id, primaryRelayId)
+                role = 'PRIMARY';
+            elseif any(strcmp(backupRelayIds, relay.id))
+                role = 'BACKUP';
+            elseif anaRelayRes.isOnFaultPath
+                role = 'REMOTE_BACKUP';
+            else
+                role = 'UNASSIGNED';
             end
 
             % Secondary Current Conversion
@@ -302,15 +351,41 @@ function studyResult = evaluateRadialProtectionScenarios(simulationResults, conf
 end
 
 function bfResult = evaluateBreakerFailureForScenario(sDef, relayEvals, config)
-    priEval = findEval(relayEvals, 'RELAY_BUS_B');
-    bkuEval = findEval(relayEvals, 'RELAY_BUS_A');
+    primaryRelayId = 'RELAY_BUS_B';
+    backupRelayId = 'RELAY_BUS_A';
+    if isfield(config, 'zones')
+        for zIdx = 1:numel(config.zones)
+            z = config.zones(zIdx);
+            if isfield(z, 'applicableFaultedBuses') && any(strcmp(cellstr(z.applicableFaultedBuses), sDef.faultedBus))
+                primaryRelayId = char(z.primaryRelayId);
+                if ~isempty(z.backupRelayIds)
+                    backupRelayId = char(z.backupRelayIds{1});
+                else
+                    backupRelayId = '';
+                end
+                break;
+            end
+        end
+    end
+
+    priEval = findEval(relayEvals, primaryRelayId);
+    if ~isempty(backupRelayId)
+        bkuEval = findEval(relayEvals, backupRelayId);
+    else
+        bkuEval = struct('operatingTime_s', Inf, 'totalClearingTime_s', Inf);
+    end
+
+    dispBackupId = backupRelayId;
+    if isempty(dispBackupId)
+        dispBackupId = 'NONE';
+    end
 
     if ~sDef.isFault
         bfResult = struct( ...
             'scenarioId', sDef.id, ...
-            'primaryRelayId', 'RELAY_BUS_B', ...
+            'primaryRelayId', primaryRelayId, ...
             'primaryBreakerState', 'closed', ...
-            'backupRelayId', 'RELAY_BUS_A', ...
+            'backupRelayId', dispBackupId, ...
             'primaryOperatingTime_s', priEval.operatingTime_s, ...
             'backupOperatingTime_s', bkuEval.operatingTime_s, ...
             'CTI_s', Inf, ...
@@ -329,29 +404,37 @@ function bfResult = evaluateBreakerFailureForScenario(sDef, relayEvals, config)
 
     % Breaker Failure Mode: Primary breaker fails to open
     % Backup clears after backup relay time + backup breaker delay
-    if bkuEval.operatingTime_s < Inf
+    if isempty(backupRelayId)
+        backupClearingTime_s = Inf;
+        bfStatus = 'NO_BACKUP_PROTECTION';
+        cti = Inf;
+        margin = Inf;
+        mechanism = 'No backup protection configured for this zone';
+    elseif bkuEval.operatingTime_s < Inf
         backupClearingTime_s = bkuEval.totalClearingTime_s;
         bfStatus = 'CLEARED_BY_BACKUP_PROTECTION';
         cti = bkuEval.operatingTime_s - priEval.operatingTime_s;
         margin = bkuEval.operatingTime_s - priEval.totalClearingTime_s;
+        mechanism = sprintf('Backup cleared in %.4f s', backupClearingTime_s);
     else
         backupClearingTime_s = Inf;
         bfStatus = 'NOT_CLEARED_BY_MODELED_PROTECTION';
         cti = Inf;
         margin = Inf;
+        mechanism = 'Backup protection does not operate';
     end
 
     bfResult = struct( ...
         'scenarioId', sDef.id, ...
-        'primaryRelayId', 'RELAY_BUS_B', ...
+        'primaryRelayId', primaryRelayId, ...
         'primaryBreakerState', 'failedToOpen', ...
-        'backupRelayId', 'RELAY_BUS_A', ...
+        'backupRelayId', dispBackupId, ...
         'primaryOperatingTime_s', priEval.operatingTime_s, ...
         'backupOperatingTime_s', bkuEval.operatingTime_s, ...
         'CTI_s', cti, ...
         'clearingTimeMargin_s', margin, ...
         'overallStatus', bfStatus, ...
-        'clearingMechanism', sprintf('Backup cleared in %.4f s', backupClearingTime_s));
+        'clearingMechanism', mechanism);
 end
 
 function target = findEval(evalArray, targetId)
