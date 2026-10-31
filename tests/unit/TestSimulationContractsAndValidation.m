@@ -140,9 +140,27 @@ classdef TestSimulationContractsAndValidation < matlab.unittest.TestCase
             testCase.verifyTrue(contains(comp.explanation, 'Incompatible voltage bases'));
         end
 
-        function testCompareWithBlockedSimulationIsSkipped(testCase)
+        function testCompareWithBlockedSimulationIsBlocked(testCase)
             blockedRes = createSimulationResultSchema('BLOCKED', 'SCN_01');
             comp = compareAnalyticalAndSimulation(2099.46, blockedRes, 'current_A', 'BUS_B');
+            testCase.verifyEqual(comp.status, 'BLOCKED');
+            testCase.verifyTrue(contains(comp.explanation, 'blocked'));
+        end
+
+        function testCompareWithBlockedSimulationIsSkipped(testCase)
+            % Backward compatibility alias for legacy test name:
+            % Verifies that blocked simulation is explicitly identified as BLOCKED in the 4-state contract,
+            % distinguishing unavailable execution from a deliberately skipped test.
+            blockedRes = createSimulationResultSchema('BLOCKED', 'SCN_01');
+            comp = compareAnalyticalAndSimulation(2099.46, blockedRes, 'current_A', 'BUS_B');
+            testCase.verifyEqual(comp.status, 'BLOCKED');
+            testCase.verifyTrue(contains(comp.explanation, 'blocked'));
+        end
+
+        function testCompareWithSkippedSimulationIsSkipped(testCase)
+            % Verifies that an unrun or deliberately skipped simulation produces SKIPPED
+            skippedRes = createSimulationResultSchema('NOT_RUN', 'SCN_01');
+            comp = compareAnalyticalAndSimulation(2099.46, skippedRes, 'current_A', 'BUS_B');
             testCase.verifyEqual(comp.status, 'SKIPPED');
             testCase.verifyTrue(contains(comp.explanation, 'not executed'));
         end

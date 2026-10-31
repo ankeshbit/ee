@@ -57,8 +57,12 @@ classdef TestSimscapeComponentVerification < matlab.unittest.TestCase
             if bdIsLoaded(mdlName)
                 close_system(mdlName, 0);
             end
-            delete(modelPath);
-            rmdir(tempDir);
+            if exist(modelPath, 'file')
+                delete(modelPath);
+            end
+            if exist(tempDir, 'dir')
+                rmdir(tempDir, 's');
+            end
         end
 
         function testPrototypeBlockedWithInjectedOverrides(testCase)

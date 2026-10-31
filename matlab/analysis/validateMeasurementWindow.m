@@ -18,7 +18,7 @@ function window = validateMeasurementWindow(time_s, faultInsertionTime_s, system
 %
 % Outputs:
 %   window               - Struct with fields:
-%                          isValid                : Boolean
+%                          isValid                : Boolean (true ONLY when all criteria are satisfied)
 %                          prefaultIndices        : Indices for prefault steady-state
 %                          faultWindowIndices     : Indices for complete post-fault window
 %                          steadyStateIndices     : Indices for post-transient steady-state window
@@ -31,57 +31,84 @@ function window = validateMeasurementWindow(time_s, faultInsertionTime_s, system
 %                          numCycles              : Number of full cycles in steady-state window
 %                          warningMessage         : Char explaining any deficiencies
 
+    % 1. Validate fundamental frequency
     if nargin < 3 || isempty(systemFrequency_Hz)
         systemFrequency_Hz = 50.0;
     end
+    if ~isnumeric(systemFrequency_Hz) || ~isscalar(systemFrequency_Hz) || ...
+       ~isreal(systemFrequency_Hz) || ~isfinite(systemFrequency_Hz) || systemFrequency_Hz <= 0
+        window = p_makeInvalidWindow(NaN, 'systemFrequency_Hz must be a finite, real, positive numeric scalar.');
+        return;
+    end
+
+    % 2. Validate options struct
     if nargin < 4 || isempty(options)
         options = struct();
+    end
+    if ~isstruct(options) || ~isscalar(options)
+        window = p_makeInvalidWindow(systemFrequency_Hz, 'options must be a scalar structure.');
+        return;
     end
 
     minSamplesPerCycle = 16;
     if isfield(options, 'minSamplesPerCycle') && ~isempty(options.minSamplesPerCycle)
-        minSamplesPerCycle = options.minSamplesPerCycle;
+        val = options.minSamplesPerCycle;
+        if ~isnumeric(val) || ~isscalar(val) || ~isreal(val) || ~isfinite(val) || val < 1
+            window = p_makeInvalidWindow(systemFrequency_Hz, 'options.minSamplesPerCycle must be a real, finite scalar >= 1.');
+            return;
+        end
+        minSamplesPerCycle = double(val);
     end
 
     minCyclesForWindow = 1.0;
     if isfield(options, 'minCyclesForWindow') && ~isempty(options.minCyclesForWindow)
-        minCyclesForWindow = options.minCyclesForWindow;
+        val = options.minCyclesForWindow;
+        if ~isnumeric(val) || ~isscalar(val) || ~isreal(val) || ~isfinite(val) || val <= 0
+            window = p_makeInvalidWindow(systemFrequency_Hz, 'options.minCyclesForWindow must be a real, finite scalar > 0.');
+            return;
+        end
+        minCyclesForWindow = double(val);
     end
 
     cyclesToSkipTransient = 1.0;
     if isfield(options, 'cyclesToSkipTransient') && ~isempty(options.cyclesToSkipTransient)
-        cyclesToSkipTransient = options.cyclesToSkipTransient;
+        val = options.cyclesToSkipTransient;
+        if ~isnumeric(val) || ~isscalar(val) || ~isreal(val) || ~isfinite(val) || val < 0
+            window = p_makeInvalidWindow(systemFrequency_Hz, 'options.cyclesToSkipTransient must be a real, finite scalar >= 0.');
+            return;
+        end
+        cyclesToSkipTransient = double(val);
     end
 
-    window = struct();
-    window.isValid = false;
-    window.prefaultIndices = [];
-    window.faultWindowIndices = [];
-    window.steadyStateIndices = [];
-    window.t_start_s = NaN;
-    window.t_end_s = NaN;
-    window.nominalFrequency_Hz = systemFrequency_Hz;
-    window.period_s = 1.0 / systemFrequency_Hz;
-    window.effectiveSampleRate_Hz = NaN;
-    window.samplesPerCycle = NaN;
-    window.numCycles = 0;
-    window.warningMessage = '';
+    window = p_makeInvalidWindow(systemFrequency_Hz, '');
 
-    % Check time_s validity
+    % 3. Validate faultInsertionTime_s
+    if nargin < 2 || isempty(faultInsertionTime_s) || ~isnumeric(faultInsertionTime_s) || ...
+       ~isscalar(faultInsertionTime_s) || ~isreal(faultInsertionTime_s) || ~isfinite(faultInsertionTime_s)
+        window.warningMessage = 'faultInsertionTime_s must be a finite, real numeric scalar.';
+        return;
+    end
+
+    % 4. Validate time_s vector
     if isempty(time_s) || ~isnumeric(time_s) || ~isvector(time_s)
         window.warningMessage = 'Time vector is empty or not a numeric vector.';
         return;
     end
 
-    time_s = time_s(:);
+    time_s = double(time_s(:));
     if numel(time_s) < 2
         window.warningMessage = 'Time vector contains fewer than 2 samples.';
         return;
     end
 
+    if any(~isfinite(time_s))
+        window.warningMessage = 'Time vector contains non-finite (NaN or Inf) values.';
+        return;
+    end
+
     dt = diff(time_s);
-    if any(~isfinite(time_s)) || any(dt <= 0)
-        window.warningMessage = 'Time vector is not finite or not strictly monotonically increasing.';
+    if any(dt <= 0)
+        window.warningMessage = 'Time vector is not strictly monotonically increasing.';
         return;
     end
 
@@ -98,12 +125,28 @@ function window = validateMeasurementWindow(time_s, faultInsertionTime_s, system
 
     if samplesPerCycle < minSamplesPerCycle
         window.warningMessage = sprintf( ...
-            'Insufficient sampling rate: %0.1f samples/cycle (minimum required is %d).', ...
+            'Insufficient sampling rate: %0.1f samples/cycle (minimum required is %g).', ...
             samplesPerCycle, minSamplesPerCycle);
         return;
     end
 
     T = window.period_s;
+
+    % 5. Fault timing bounds
+    t_start = time_s(1);
+    t_max   = time_s(end);
+
+    if faultInsertionTime_s < t_start
+        window.warningMessage = sprintf('Fault insertion time (%.4f s) precedes simulation start time (%.4f s).', ...
+            faultInsertionTime_s, t_start);
+        return;
+    end
+
+    if faultInsertionTime_s >= t_max
+        window.warningMessage = sprintf('Simulation stopped at %.4f s before fault inception at %.4f s.', ...
+            t_max, faultInsertionTime_s);
+        return;
+    end
 
     % Prefault window: samples strictly before faultInsertionTime_s
     prefaultIdx = find(time_s < faultInsertionTime_s);
@@ -114,18 +157,20 @@ function window = validateMeasurementWindow(time_s, faultInsertionTime_s, system
     window.faultWindowIndices = faultIdx;
 
     if isempty(faultIdx)
-        window.warningMessage = sprintf('Simulation stopped before fault inception at %g s.', ...
-            faultInsertionTime_s);
+        window.warningMessage = sprintf('Simulation stopped before fault inception at %g s.', faultInsertionTime_s);
         return;
     end
 
-    % Steady-state fault window: skip transient interval
+    % 6. Post-transient steady-state window calculation
     steadyStart_t = faultInsertionTime_s + (cyclesToSkipTransient * T);
-    t_max = time_s(end);
 
+    % CRITICAL: Never silently fall back to faultInsertionTime_s when duration is short!
     if t_max < steadyStart_t
-        % Not enough duration to skip full transient; fallback to evaluating if at least minCycles available
-        steadyStart_t = faultInsertionTime_s;
+        window.warningMessage = sprintf( ...
+            ['Simulation duration (%.4f s) is insufficient to skip post-fault transient interval; ', ...
+             'requires at least %.4f s to skip %.2f transient cycles at %g Hz.'], ...
+            t_max, steadyStart_t, cyclesToSkipTransient, systemFrequency_Hz);
+        return;
     end
 
     availableDuration = t_max - steadyStart_t;
@@ -133,16 +178,20 @@ function window = validateMeasurementWindow(time_s, faultInsertionTime_s, system
 
     if numFullCycles < minCyclesForWindow
         window.warningMessage = sprintf( ...
-            'Post-fault window duration (%0.4f s) spans %0.2f cycles; requires at least %0.2f cycles.', ...
+            ['Post-transient steady-state window duration (%0.4f s) spans %0.2f cycles; ', ...
+             'requires at least %0.2f cycles.'], ...
             availableDuration, availableDuration / T, minCyclesForWindow);
         return;
     end
 
     steadyEnd_t = steadyStart_t + (numFullCycles * T);
-    steadyIdx = find(time_s >= steadyStart_t & time_s <= steadyEnd_t + 1e-9 * T);
+    steadyIdx = find(time_s >= (steadyStart_t - 1e-9 * T) & time_s <= (steadyEnd_t + 1e-9 * T));
 
-    if numel(steadyIdx) < (numFullCycles * minSamplesPerCycle)
-        window.warningMessage = 'Insufficient samples in designated steady-state window.';
+    reqMinSamples = round(numFullCycles * minSamplesPerCycle);
+    if numel(steadyIdx) < reqMinSamples
+        window.warningMessage = sprintf( ...
+            'Insufficient samples in designated steady-state window (%d found, requires at least %d).', ...
+            numel(steadyIdx), reqMinSamples);
         return;
     end
 
@@ -151,4 +200,24 @@ function window = validateMeasurementWindow(time_s, faultInsertionTime_s, system
     window.t_end_s = steadyEnd_t;
     window.numCycles = numFullCycles;
     window.isValid = true;
+end
+
+function w = p_makeInvalidWindow(f0, msg)
+    w = struct();
+    w.isValid = false;
+    w.prefaultIndices = [];
+    w.faultWindowIndices = [];
+    w.steadyStateIndices = [];
+    w.t_start_s = NaN;
+    w.t_end_s = NaN;
+    w.nominalFrequency_Hz = f0;
+    if isfinite(f0) && f0 > 0
+        w.period_s = 1.0 / f0;
+    else
+        w.period_s = NaN;
+    end
+    w.effectiveSampleRate_Hz = NaN;
+    w.samplesPerCycle = NaN;
+    w.numCycles = 0;
+    w.warningMessage = char(msg);
 end

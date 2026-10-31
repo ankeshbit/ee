@@ -148,7 +148,7 @@ study.protectionCoord = p_coordinationSummary(cfg, anaResults);
 
 %% 6. Acceptance checks
 pLog(options,'\n[6/8] Running acceptance-criteria checks...\n');
-[study.testOutcomes, study.overallPass] = ...
+[study.testOutcomes, study.overallPass, study.overallStatus] = ...
     p_evaluateAcceptance(simResults, study.relayTimingTable);
 if ~isempty(study.testOutcomes) && isfield(study.testOutcomes(1),'pass')
     nPassed = sum([study.testOutcomes.pass]);
@@ -185,7 +185,7 @@ end
 
 pLog(options,'\n================================================================\n');
 pLog(options,' PHASE G COMPLETE  |  Overall: %s  |  Checks: %d/%d passed\n', ...
-    ternary(study.overallPass,'PASS','FAIL'), nPassed, nTotal);
+    study.overallStatus, nPassed, nTotal);
 pLog(options,'================================================================\n\n');
 end
 
@@ -197,7 +197,7 @@ s = struct('runTimestamp','','matlabVersion','','projRoot','','modelFile','', ..
     'analyticalResults',struct([]),'simulationResults',{{}},...
     'comparisonTable',struct([]),'relayTimingTable',struct([]), ...
     'protectionCoord',struct(),'testOutcomes',struct([]), ...
-    'overallPass',false,'reportPaths',struct(),'plotPaths',struct());
+    'overallPass',false,'overallStatus','NOT_RUN','reportPaths',struct(),'plotPaths',struct());
 end
 
 function network = p_buildNetwork()
@@ -249,63 +249,8 @@ if ~isempty(rows)
 end
 end
 
-function [outcomes, overallPass] = p_evaluateAcceptance(simResults, rtTable)
-RELAY_TOL_S = 0.020;
-EXTINCT_A   = 0.01;
-MAX_CLEAR_S = 0.300;
-outcomes = [];
-for i = 1:numel(simResults)
-    r = simResults{i};
-    if isempty(r) || ~isfield(r,'status') || ~strcmp(r.status,'COMPLETED'), continue; end
-    isHealthy = strcmp(r.faultType,'HEALTHY');
-    isCBF     = contains(r.scenarioId,'CBF');
-    if ~isHealthy && ~isCBF && isfield(r.relay,'B') && isfield(r.relay.B,'breakerOpenTime_s')
-        delay = r.relay.B.breakerOpenTime_s - r.faultInception_s;
-        row = struct('criterion','PrimaryBreakWithinLimit', ...
-            'scenarioId',r.scenarioId,'pass',delay < MAX_CLEAR_S, ...
-            'value',sprintf('%.3f s',delay),'limit',sprintf('< %.3f s',MAX_CLEAR_S));
-        if isempty(outcomes), outcomes = row; else, outcomes(end+1) = row; end %#ok<AGROW>
-        cv = r.clearingVerification;
-        row = struct('criterion','FaultCurrentExtinction', ...
-            'scenarioId',r.scenarioId, ...
-            'pass',cv.faultCleared && cv.postClearingCurrentPeak_A < EXTINCT_A, ...
-            'value',sprintf('%.4f A',cv.postClearingCurrentPeak_A), ...
-            'limit',sprintf('< %.4f A',EXTINCT_A));
-        outcomes(end+1) = row; %#ok<AGROW>
-    end
-    if isHealthy
-        bTripped = isfield(r.relay,'B') && strcmp(r.relay.B.tripStatus,'TRIPPED');
-        row = struct('criterion','NoSpuriousTrip', ...
-            'scenarioId',r.scenarioId,'pass',~bTripped, ...
-            'value',ternary(bTripped,'TRIPPED','NO_TRIP'),'limit','NO_TRIP');
-        if isempty(outcomes), outcomes = row; else, outcomes(end+1) = row; end %#ok<AGROW>
-    end
-    if isCBF
-        aTripped = isfield(r.relay,'A') && strcmp(r.relay.A.tripStatus,'TRIPPED');
-        row = struct('criterion','BackupRelayOpOnCBF', ...
-            'scenarioId',r.scenarioId, ...
-            'pass',aTripped && r.clearingVerification.faultCleared, ...
-            'value',ternary(aTripped,'TRIPPED','NO_TRIP'),'limit','TRIPPED+CLEARED');
-        if isempty(outcomes), outcomes = row; else, outcomes(end+1) = row; end %#ok<AGROW>
-    end
-end
-if ~isempty(rtTable) && isstruct(rtTable(1)) && isfield(rtTable(1),'timingErrorMs')
-    for i = 1:numel(rtTable)
-        if isnan(rtTable(i).timingErrorMs), continue; end
-        row = struct('criterion','RelayTimingError', ...
-            'scenarioId',rtTable(i).scenarioId, ...
-            'pass',abs(rtTable(i).timingErrorMs) <= RELAY_TOL_S*1e3, ...
-            'value',sprintf('%+.1f ms',rtTable(i).timingErrorMs), ...
-            'limit',sprintf('|err|<=%.0f ms',RELAY_TOL_S*1e3));
-        if isempty(outcomes), outcomes = row; else, outcomes(end+1) = row; end %#ok<AGROW>
-    end
-end
-if isempty(outcomes)
-    outcomes = struct([]);
-    overallPass = true;
-else
-    overallPass = all([outcomes.pass]);
-end
+function [outcomes, overallPass, overallStatus] = p_evaluateAcceptance(simResults, rtTable)
+    [outcomes, overallPass, overallStatus] = evaluateStudyAcceptanceCriteria(simResults, rtTable);
 end
 
 function plotPaths = p_generatePlots(simResults, study, plotDir, options)

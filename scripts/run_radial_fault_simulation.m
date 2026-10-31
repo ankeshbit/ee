@@ -48,8 +48,9 @@ res3PH = runRadialFaultSimulation(scn3PH, struct('quiet', false));
 % -------------------------------------------------------------------------
 % CROSS-ENGINE VALIDATION BENCHMARK
 % -------------------------------------------------------------------------
-% Analytical Engine Calculation:
-net = createIllustrativeRadialNetwork();
+% Authoritative 33/11 kV Network & Analytical Engine Calculation:
+studyCfg = createRadialRelayStudyConfiguration();
+net = studyCfg.network;
 anaScn = struct('id', 'ANA_3PH_BUS_B', 'faultedBus', 'BUS_B', 'faultType', '3PH', 'Zf_pu', 0.0);
 anaRes = runIntegratedFaultStudy(net, anaScn);
 analyticalIf_A = anaRes.faultCurrentMagnitude_A;
@@ -57,12 +58,16 @@ simulatedI1_A = res3PH.phasors.I1_magnitude_A;
 absError_A = abs(simulatedI1_A - analyticalIf_A);
 relError_pct = 100 * absError_A / analyticalIf_A;
 
+% Derive sequence impedance dynamically from single authoritative master configuration
+[~, z1_total_pu] = traceRadialPath(net, 'BUS_B');
+
 fprintf('====================================================================\n');
 fprintf('  CROSS-ENGINE BENCHMARK COMPARISON (ANALYTICAL vs SIMULATION)\n');
 fprintf('====================================================================\n');
 fprintf(' Faulted Location:                 BUS_B (11 kV Terminal Bus)\n');
 fprintf(' Fault Type:                       Three-Phase Bolted (3PH, Zf ~ 0)\n');
-fprintf(' Total Sequence Impedance (Zth):   0.28 pu (0.10 src + 0.08 tx + 0.10 line)\n');
+fprintf(' Total Positive-Seq Z1 (Zth):      %0.4f pu (derived from master config)\n', z1_total_pu);
+fprintf(' System Base:                      10 MVA, 33/11 kV (Ibase_LV = 524.86 A)\n');
 fprintf(' Analytical Fault Current (RMS):   %0.2f A\n', analyticalIf_A);
 fprintf(' Simscape Fundamental I1 (RMS):    %0.2f A\n', simulatedI1_A);
 fprintf(' Absolute Discrepancy:             %0.2f A\n', absError_A);

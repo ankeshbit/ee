@@ -23,9 +23,14 @@ classdef TestSimulationCapabilityDiagnostic < matlab.unittest.TestCase
             testCase.verifyTrue(iscell(diag.missingRequirements));
             testCase.verifyTrue(iscell(diag.unverifiedRequirements));
 
-            % In the current environment, Simulink and Simscape are licensed but Simscape_Electrical is 0
-            testCase.verifyEqual(diag.status, 'BLOCKED_LICENSE');
-            testCase.verifyTrue(any(contains(diag.missingRequirements, 'Simscape Electrical license')));
+            % In the current environment, verify status matches actual license state
+            if diag.simscapeElectricalLicensed
+                testCase.verifyEqual(diag.status, 'READY');
+                testCase.verifyEmpty(diag.missingRequirements);
+            else
+                testCase.verifyEqual(diag.status, 'BLOCKED_LICENSE');
+                testCase.verifyTrue(any(contains(diag.missingRequirements, 'Simscape Electrical license')));
+            end
         end
 
         function testStatusInterpretationReadyWithOverrides(testCase)

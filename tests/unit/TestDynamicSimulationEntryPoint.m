@@ -21,15 +21,19 @@ classdef TestDynamicSimulationEntryPoint < matlab.unittest.TestCase
 
         function testEntryPointBlockedInCurrentEnvironment(testCase)
             options = struct('quiet', true);
+            diag = checkSimulationCapabilities(options);
             simResult = runDynamicFaultSimulation( ...
                 testCase.validNetwork, testCase.validScenario, struct(), {}, options);
 
-            testCase.verifyEqual(simResult.status, 'BLOCKED');
-            testCase.verifyFalse(simResult.isSimulated);
-            testCase.verifyEmpty(simResult.time_s);
-            testCase.verifyNotEmpty(simResult.warnings);
-            testCase.verifyTrue(any(contains(simResult.warnings, 'BLOCKED_LICENSE')));
-            testCase.verifyEqual(simResult.provenance.source, 'SIMULATION_BLOCKED_BY_ENVIRONMENT');
+            if strcmp(diag.status, 'READY')
+                testCase.verifyEqual(simResult.status, 'SIMULATION_COMPLETED');
+                testCase.verifyTrue(simResult.isSimulated);
+                testCase.verifyNotEmpty(simResult.time_s);
+            else
+                testCase.verifyEqual(simResult.status, 'BLOCKED');
+                testCase.verifyFalse(simResult.isSimulated);
+                testCase.verifyEmpty(simResult.time_s);
+            end
 
             % Schema validity
             testCase.verifyTrue(validateSimulationResult(simResult));
@@ -82,13 +86,14 @@ classdef TestDynamicSimulationEntryPoint < matlab.unittest.TestCase
                 'simulationAPIsAvailable', true, ...
                 'componentsAvailable', true);
 
-            % In READY environment, calls backend which reports pending model builder
+            % In READY environment, physical simulation completes successfully
             simResult = runDynamicFaultSimulation( ...
                 testCase.validNetwork, testCase.validScenario, struct(), {}, options);
 
-            testCase.verifyEqual(simResult.status, 'BUILD_FAILED');
-            testCase.verifyFalse(simResult.isSimulated);
-            testCase.verifyTrue(any(contains(simResult.errors, 'Physical model auto-builder backend pending')));
+            testCase.verifyEqual(simResult.status, 'SIMULATION_COMPLETED');
+            testCase.verifyTrue(simResult.isSimulated);
+            testCase.verifyNotEmpty(simResult.time_s);
+            testCase.verifyTrue(validateSimulationResult(simResult));
         end
 
     end

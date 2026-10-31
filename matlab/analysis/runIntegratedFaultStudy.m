@@ -12,10 +12,21 @@ function studyResults = runIntegratedFaultStudy( ...
 % measurement element lies on that path. Legacy relays with protectedBranch
 % use the branch from-bus as their measurement side.
 
+if nargin < 3 || isempty(relays)
+    relays = struct([]);
+end
+if nargin < 4 || isempty(coordinationPairs)
+    coordinationPairs = struct([]);
+end
+
 validateRadialNetwork(network);
 validateScenarios(scenarios, network);
-validateRelays(relays, network);
-validatePairs(coordinationPairs, relays);
+if ~isempty(relays)
+    validateRelays(relays, network);
+    if ~isempty(coordinationPairs)
+        validatePairs(coordinationPairs, relays);
+    end
+end
 
 studyResults = repmat(struct( ...
     'scenarioId', '', ...
@@ -52,10 +63,15 @@ for scenarioIndex = 1:numel(scenarios)
     [faultCurrent_pu, phaseCurrents_pu, sequenceCurrents_pu] = ...
         extractFaultCurrent(fault, char(scenario.faultType));
     faultCurrent_A = faultCurrent_pu * bases.IbaseA;
-    relayResults = evaluateRelays( ...
-        relays, pathElements, faultCurrent_pu, network, char(scenario.faultType), sequenceCurrents_pu);
-    coordinationResults = evaluatePairs( ...
-        coordinationPairs, relayResults, relays, char(scenario.faultedBus));
+    if ~isempty(relays)
+        relayResults = evaluateRelays( ...
+            relays, pathElements, faultCurrent_pu, network, char(scenario.faultType), sequenceCurrents_pu);
+        coordinationResults = evaluatePairs( ...
+            coordinationPairs, relayResults, relays, char(scenario.faultedBus));
+    else
+        relayResults = struct([]);
+        coordinationResults = struct([]);
+    end
 
     studyResults(scenarioIndex).scenarioId = char(scenario.id);
     studyResults(scenarioIndex).faultedBus = char(scenario.faultedBus);

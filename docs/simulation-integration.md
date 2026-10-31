@@ -101,7 +101,7 @@ Key fields include:
 
 Cross-engine comparison enforces strict physical and mathematical consistency:
 - **Basis Validation:** Rejects comparisons between measurements from different transformer sides or voltage bases without explicit base conversion (`status = 'INCOMPATIBLE_BASIS'`).
-- **Execution Validation:** If simulation was not run or blocked, comparison is cleanly marked `SKIPPED`.
+- **Execution Validation:** If simulation was blocked by environment prerequisites (e.g. missing toolbox license), comparison is marked `BLOCKED`. If simulation was unrun or explicitly bypassed, comparison is marked `SKIPPED`.
 - **Measurement Integrity:** If steady-state window was corrupted or missing, comparison is marked `INVALID_MEASUREMENT`.
 - **Numerical Validation:** Calculates absolute error and percentage relative error:
   $$\text{Absolute Error} = |I_{\text{sim}} - I_{\text{analytical}}|$$

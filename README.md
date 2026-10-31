@@ -44,7 +44,7 @@ ee/
 
 The following tables summarize the real validation metrics generated from [`scripts/run_complete_fault_study.m`](scripts/run_complete_fault_study.m) on MATLAB R2026b:
 
-### A. Steady-State Fault Currents (Faulted Bus B, 11 kV, 100 MVA Base)
+### A. Steady-State Fault Currents (Faulted Bus B, 11 kV, 10 MVA Base)
 
 | Scenario | Fault Type | Quantity Basis | Analytical Current | Simscape Current | Absolute Error | True Percent Error | Acceptance Limit | Verdict |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |

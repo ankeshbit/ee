@@ -140,7 +140,11 @@ function result = runDynamicBreakerSwitchingSimulation(scenario, options)
         set_param(modelName, 'StopTime', num2str(scenario.simulationStopTime_s));
 
         %% 6. Run simulation
-        simOut = sim(modelName);
+        if isfield(options, 'mockOut') && ~isempty(options.mockOut)
+            simOut = options.mockOut;
+        else
+            simOut = sim(modelName);
+        end
 
         % Restore defaults immediately after simulation completes
         p_safeRestoreDefaults(modelName);
@@ -160,26 +164,44 @@ function result = runDynamicBreakerSwitchingSimulation(scenario, options)
     %% 7. Extract output signals (10 ports)
     try
         y = simOut.yout;
-        if isprop(simOut, 'tout') && ~isempty(simOut.tout)
+        if isempty(y) || p_safeNumElements(y) < 10
+            error('runDynamicBreakerSwitchingSimulation:MissingMandatoryPort', ...
+                'Output Dataset is missing mandatory ports (expected at least 10, got %d).', ...
+                p_safeNumElements(y));
+        end
+
+        if (isprop(simOut, 'tout') || isfield(simOut, 'tout')) && ~isempty(simOut.tout)
             t = simOut.tout(:);
         else
-            t = y{1}.Values.Time(:);
+            elem1 = y{1};
+            if isprop(elem1, 'Values') && ~isempty(elem1.Values)
+                t = elem1.Values.Time(:);
+            elseif isa(elem1, 'timeseries') || isprop(elem1, 'Time') || isfield(elem1, 'Time')
+                t = elem1.Time(:);
+            else
+                error('runDynamicBreakerSwitchingSimulation:MissingTimeVector', ...
+                    'Cannot determine time vector from simulation output.');
+            end
         end
         nT = numel(t);
+        if nT < 2 || any(~isfinite(t)) || any(diff(t) <= 0)
+            error('runDynamicBreakerSwitchingSimulation:InvalidTimeVector', ...
+                'Simulation time vector must be finite, non-empty, and strictly increasing.');
+        end
 
         % Ports 1-4: physical measurements [T x 3]
-        vBusA = squeeze(y{1}.Values.Data).';
-        iBusA = squeeze(y{2}.Values.Data).';
-        vBusB = squeeze(y{3}.Values.Data).';
-        iBusB = squeeze(y{4}.Values.Data).';
+        vBusA = p_extractMeasurement(y, 1, t);
+        iBusA = p_extractMeasurement(y, 2, t);
+        vBusB = p_extractMeasurement(y, 3, t);
+        iBusB = p_extractMeasurement(y, 4, t);
 
-        % Ports 5-10: relay / breaker scalars
-        tripCmdB  = p_extractPort(y,  5, nT);
-        brkStateB = p_extractPort(y,  6, nT);
-        tripCmdA  = p_extractPort(y,  7, nT);
-        brkStateA = p_extractPort(y,  8, nT);
-        sigmaB    = p_extractPort(y,  9, nT);
-        sigmaA    = p_extractPort(y, 10, nT);
+        % Ports 5-10: relay / breaker signals with time-aware interpolation
+        tripCmdB  = p_extractPort(y,  5, t, true);   % discrete Boolean
+        brkStateB = p_extractPort(y,  6, t, true);   % discrete Boolean
+        tripCmdA  = p_extractPort(y,  7, t, true);   % discrete Boolean
+        brkStateA = p_extractPort(y,  8, t, true);   % discrete Boolean
+        sigmaB    = p_extractPort(y,  9, t, false);  % continuous
+        sigmaA    = p_extractPort(y, 10, t, false);  % continuous
 
     catch ME
         p_safeRestoreDefaults(modelName);
@@ -286,20 +308,121 @@ function p_safeRestoreDefaults(modelName)
     end
 end
 
-function sig = p_extractPort(y, portIdx, nT)
-    % Return zeros for missing ports; resample if length mismatch
-    if y.numElements >= portIdx
-        raw = double(squeeze(y{portIdx}.Values.Data));
-        raw = raw(:);
-        if numel(raw) == nT
-            sig = raw;
-        elseif numel(raw) > 1
-            sig = interp1(linspace(0,1,numel(raw)), raw, linspace(0,1,nT), 'linear')';
-        else
-            sig = repmat(raw(1), nT, 1);
-        end
+function n = p_safeNumElements(y)
+    if isempty(y)
+        n = 0;
+    elseif isa(y, 'Simulink.SimulationData.Dataset') || ismethod(y, 'numElements')
+        n = y.numElements;
+    elseif isprop(y, 'numElements') || isfield(y, 'numElements')
+        n = y.numElements;
+    elseif iscell(y)
+        n = numel(y);
     else
-        sig = zeros(nT, 1);
+        try
+            n = y.numElements;
+        catch
+            n = numel(y);
+        end
+    end
+end
+
+function matData = p_extractMeasurement(y, portIdx, targetT)
+    if isempty(y) || p_safeNumElements(y) < portIdx
+        error('runDynamicBreakerSwitchingSimulation:MissingMandatoryPort', ...
+            'Measurement port %d is missing from simulation dataset.', portIdx);
+    end
+    elem = y{portIdx};
+    if isempty(elem)
+        error('runDynamicBreakerSwitchingSimulation:MissingSignalValues', ...
+            'Measurement port %d is empty.', portIdx);
+    end
+    if isprop(elem, 'Values') && ~isempty(elem.Values)
+        ts = elem.Values;
+    elseif isa(elem, 'timeseries') || isprop(elem, 'Data') || isfield(elem, 'Data')
+        ts = elem;
+    else
+        error('runDynamicBreakerSwitchingSimulation:MissingSignalValues', ...
+            'Measurement port %d contains no valid Values or Data.', portIdx);
+    end
+    raw = double(squeeze(ts.Data));
+    if size(raw, 1) ~= numel(targetT) && size(raw, 2) == numel(targetT)
+        raw = raw.';
+    end
+    if (isprop(ts, 'Time') || isfield(ts, 'Time')) && ~isempty(ts.Time)
+        srcT = double(ts.Time(:));
+    else
+        srcT = targetT;
+    end
+    nT = numel(targetT);
+    if size(raw, 1) == nT && (numel(srcT) == nT && max(abs(srcT - targetT)) < 1e-12)
+        matData = raw;
+    else
+        % Time-aware linear interpolation across all columns
+        if srcT(1) > targetT(1) + 1e-4 || srcT(end) < targetT(end) - 1e-4
+            error('runDynamicBreakerSwitchingSimulation:IncompatibleTimeRange', ...
+                'Measurement port %d time range [%g, %g] is incompatible with [%g, %g].', ...
+                portIdx, srcT(1), srcT(end), targetT(1), targetT(end));
+        end
+        nCols = size(raw, 2);
+        matData = zeros(nT, nCols);
+        for c = 1:nCols
+            matData(:, c) = interp1(srcT, raw(:, c), targetT, 'linear', 'extrap');
+        end
+    end
+    if any(~isfinite(matData(:)))
+        error('runDynamicBreakerSwitchingSimulation:NonFiniteData', ...
+            'Measurement port %d contains non-finite (NaN or Inf) values.', portIdx);
+    end
+end
+
+function sig = p_extractPort(y, portIdx, targetT, isDiscrete)
+    % Extract discrete or continuous scalar signal with time-aware interpolation
+    if isempty(y) || p_safeNumElements(y) < portIdx
+        error('runDynamicBreakerSwitchingSimulation:MissingMandatoryPort', ...
+            'Mandatory output port %d is missing from simulation dataset.', portIdx);
+    end
+    elem = y{portIdx};
+    if isempty(elem)
+        error('runDynamicBreakerSwitchingSimulation:MissingSignalValues', ...
+            'Output port %d is empty.', portIdx);
+    end
+    if isprop(elem, 'Values') && ~isempty(elem.Values)
+        ts = elem.Values;
+    elseif isa(elem, 'timeseries') || isprop(elem, 'Data') || isfield(elem, 'Data')
+        ts = elem;
+    else
+        error('runDynamicBreakerSwitchingSimulation:MissingSignalValues', ...
+            'Output port %d contains no valid Values or Data.', portIdx);
+    end
+    raw = double(squeeze(ts.Data));
+    raw = raw(:);
+    if (isprop(ts, 'Time') || isfield(ts, 'Time')) && ~isempty(ts.Time)
+        srcT = double(ts.Time(:));
+    else
+        srcT = targetT;
+    end
+    nT = numel(targetT);
+    if numel(raw) == nT && (numel(srcT) == nT && max(abs(srcT - targetT)) < 1e-12)
+        sig = raw;
+    elseif numel(raw) == 1
+        sig = repmat(raw, nT, 1);
+    else
+        if srcT(1) > targetT(1) + 1e-4 || srcT(end) < targetT(end) - 1e-4
+            error('runDynamicBreakerSwitchingSimulation:IncompatibleTimeRange', ...
+                'Signal port %d time range [%g, %g] is incompatible with [%g, %g].', ...
+                portIdx, srcT(1), srcT(end), targetT(1), targetT(end));
+        end
+        if isDiscrete
+            % Zero-order hold (previous) behavior for discrete switching signals
+            sig = interp1(srcT, raw, targetT, 'previous', 'extrap');
+        else
+            sig = interp1(srcT, raw, targetT, 'linear', 'extrap');
+        end
+        sig = sig(:);
+    end
+    if any(~isfinite(sig))
+        error('runDynamicBreakerSwitchingSimulation:NonFiniteData', ...
+            'Output port %d contains non-finite (NaN or Inf) values.', portIdx);
     end
 end
 
