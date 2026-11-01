@@ -36,8 +36,16 @@ function result = evaluateEarthFaultProtection(currents_A, settings)
         error('evaluateEarthFaultProtection:InvalidCurrent', 'currents_A must be a finite numeric array.');
     end
 
+    if ~isvector(currents_A) || (numel(currents_A) ~= 1 && numel(currents_A) ~= 3)
+        error('evaluateEarthFaultProtection:InvalidCurrent', ...
+            'currents_A must be a 1-element scalar or 3-element vector.');
+    end
+
     enabled = true;
     if isfield(settings, 'enabled') && ~isempty(settings.enabled)
+        if ~islogical(settings.enabled) && ~(isnumeric(settings.enabled) && isscalar(settings.enabled) && (settings.enabled == 0 || settings.enabled == 1))
+            error('evaluateEarthFaultProtection:InvalidEnabled', 'settings.enabled must be a scalar logical.');
+        end
         enabled = logical(settings.enabled);
     end
 
@@ -51,7 +59,15 @@ function result = evaluateEarthFaultProtection(currents_A, settings)
 
     curveType = 'standard inverse';
     if isfield(settings, 'curveType') && ~isempty(settings.curveType)
-        curveType = char(settings.curveType);
+        if ~ischar(settings.curveType) && ~isstring(settings.curveType)
+            error('evaluateEarthFaultProtection:InvalidCurveType', 'settings.curveType must be a string or char vector.');
+        end
+        cNorm = lower(strtrim(char(settings.curveType)));
+        validCurves = {'standard inverse', 'si', 'very inverse', 'vi', 'extremely inverse', 'ei', 'definite', 'long time inverse'};
+        if ~any(strcmp(cNorm, validCurves))
+            error('evaluateEarthFaultProtection:UnsupportedCurveType', 'Unsupported curve type: "%s".', cNorm);
+        end
+        curveType = cNorm;
     end
 
     TMS = 0.10;
@@ -65,10 +81,13 @@ function result = evaluateEarthFaultProtection(currents_A, settings)
 
     instPickup_A = Inf;
     if isfield(settings, 'instPickup_A') && ~isempty(settings.instPickup_A)
-        if isnumeric(settings.instPickup_A) && isscalar(settings.instPickup_A) && ...
-           isreal(settings.instPickup_A) && isfinite(settings.instPickup_A) && settings.instPickup_A > 0
-            instPickup_A = double(settings.instPickup_A);
+        if ~isnumeric(settings.instPickup_A) || ~isscalar(settings.instPickup_A) || ...
+           ~isreal(settings.instPickup_A) || ...
+           (~isinf(settings.instPickup_A) && (settings.instPickup_A <= 0 || ~isfinite(settings.instPickup_A)))
+            error('evaluateEarthFaultProtection:InvalidInstPickup', ...
+                'settings.instPickup_A must be a positive finite scalar or Inf.');
         end
+        instPickup_A = double(settings.instPickup_A);
     end
 
     % Calculate residual current 3*I0

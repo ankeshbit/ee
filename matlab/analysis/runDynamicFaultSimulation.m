@@ -99,6 +99,16 @@ function simResult = runDynamicFaultSimulation(network, scenario, simConfig, mea
         return;
     end
 
+    % Step 4.5: Check network and scenario physical compatibility
+    compat = p_checkNetworkPhysicalCompatibility(validConfig.network, validConfig.scenario);
+    if ~compat.isCompatible
+        simResult = createSimulationResultSchema('UNSUPPORTED', validConfig.scenario.scenarioId);
+        simResult.errors{end+1} = sprintf('Physical model does not support this scenario: %s', compat.reason);
+        simResult.isSimulated = false;
+        validateSimulationResult(simResult);
+        return;
+    end
+
     % Step 5 to Step 10: Model construction, configuration, and execution backend
     try
         modelId = sprintf('sim_fault_%s', regexprep(validConfig.scenario.scenarioId, '\W', '_'));
@@ -183,16 +193,36 @@ function simResult = executePhysicalSimulation(validConfig, modelId, options)
         load_system(modelFile);
     end
 
-    % 4. Configure parameters on model
-    faultBlock = [modelName, '/Fault_BusB'];
+    % 4. Configure parameters on model according to requested fault location
+    faultedBus = upper(strtrim(char(scenario.faultedBus)));
+    if strcmp(faultedBus, 'BUS_A')
+        activeFaultBlock = [modelName, '/Fault_BusA'];
+        inactiveFaultBlock = [modelName, '/Fault_BusB'];
+    elseif strcmp(faultedBus, 'BUS_B')
+        activeFaultBlock = [modelName, '/Fault_BusB'];
+        inactiveFaultBlock = [modelName, '/Fault_BusA'];
+    else
+        error('runDynamicFaultSimulation:UnsupportedFaultLocation', ...
+            'Faulted bus "%s" cannot be represented in physical model.', scenario.faultedBus);
+    end
+
+    % Ensure inactive fault block is disabled
+    try
+        set_param(inactiveFaultBlock, ...
+            'enable_temporal_fault', 'ee.enum.enable.no', ...
+            'fault_start_time', '999.0');
+    catch
+        % In case block is not present, ignore
+    end
+
     if isHealthy
-        set_param(faultBlock, ...
-            'enable_temporal_fault', 'ee.enum.enable.yes', ...
+        set_param(activeFaultBlock, ...
+            'enable_temporal_fault', 'ee.enum.enable.no', ...
             'fault_type_option', 'ee.enum.fault_type_option.abc', ...
             'fault_start_time', '999.0');
     else
         faultDuration = max(0.01, scenario.simulationStopTime_s - scenario.faultInsertionTime_s + 0.05);
-        set_param(faultBlock, ...
+        set_param(activeFaultBlock, ...
             'enable_temporal_fault', 'ee.enum.enable.yes', ...
             'fault_type_option', simscapeFaultOption, ...
             'fault_start_time', num2str(scenario.faultInsertionTime_s), ...
@@ -213,25 +243,59 @@ function simResult = executePhysicalSimulation(validConfig, modelId, options)
         close_system(modelName, 0);
     end
 
-    % 6. Extract signals
+    % 6. Extract signals with validation
     y = simOut.yout;
-    if isprop(simOut, 'tout') && ~isempty(simOut.tout)
-        t = simOut.tout(:);
-    else
-        t = y{1}.Values.Time(:);
+    if isempty(y)
+        error('runDynamicFaultSimulation:MissingMeasurementPorts', ...
+            'Simulation output is empty.');
     end
 
-    vBusA = squeeze(y{1}.Values.Data).';
-    iBusA = squeeze(y{2}.Values.Data).';
-    vBusB = squeeze(y{3}.Values.Data).';
-    iBusB = squeeze(y{4}.Values.Data).';
+    if isa(y, 'Simulink.SimulationData.Dataset') || ismethod(y, 'numElements') || isprop(y, 'numElements')
+        numElementsY = y.numElements;
+    elseif iscell(y)
+        numElementsY = numel(y);
+    else
+        numElementsY = 0;
+    end
+
+    if numElementsY < 4
+        error('runDynamicFaultSimulation:MissingMeasurementPorts', ...
+            'Simulation output is missing required measurement ports (expected at least 4, found %d).', numElementsY);
+    end
+
+    if isprop(simOut, 'tout') && ~isempty(simOut.tout)
+        t = double(simOut.tout(:));
+    else
+        t = double(y{1}.Values.Time(:));
+    end
+
+    if isempty(t) || any(~isfinite(t)) || any(diff(t) <= 0)
+        error('runDynamicFaultSimulation:InvalidTimeVector', ...
+            'Simulation time vector is empty, non-finite, or non-monotonic.');
+    end
+
+    vBusA = double(squeeze(y{1}.Values.Data));
+    iBusA = double(squeeze(y{2}.Values.Data));
+    vBusB = double(squeeze(y{3}.Values.Data));
+    iBusB = double(squeeze(y{4}.Values.Data));
 
     % Ensure orientation [nT x 3]
     nT = numel(t);
-    if size(vBusB, 1) ~= nT && size(vBusB, 2) == nT, vBusB = vBusB.'; end
-    if size(iBusB, 1) ~= nT && size(iBusB, 2) == nT, iBusB = iBusB.'; end
     if size(vBusA, 1) ~= nT && size(vBusA, 2) == nT, vBusA = vBusA.'; end
     if size(iBusA, 1) ~= nT && size(iBusA, 2) == nT, iBusA = iBusA.'; end
+    if size(vBusB, 1) ~= nT && size(vBusB, 2) == nT, vBusB = vBusB.'; end
+    if size(iBusB, 1) ~= nT && size(iBusB, 2) == nT, iBusB = iBusB.'; end
+
+    if size(vBusA, 1) ~= nT || size(iBusA, 1) ~= nT || size(vBusB, 1) ~= nT || size(iBusB, 1) ~= nT
+        error('runDynamicFaultSimulation:DimensionMismatch', ...
+            'Measurement waveform row count does not match time vector length (%d).', nT);
+    end
+
+    if any(~isfinite(vBusA(:))) || any(~isfinite(iBusA(:))) || ...
+       any(~isfinite(vBusB(:))) || any(~isfinite(iBusB(:)))
+        error('runDynamicFaultSimulation:CorruptMeasurementData', ...
+            'Extracted waveforms contain non-finite (NaN or Inf) values.');
+    end
 
     % 7. Validate measurement window
     f0 = 50.0;
@@ -241,16 +305,30 @@ function simResult = executePhysicalSimulation(validConfig, modelId, options)
     winOptions = struct('minSamplesPerCycle', 16, 'minCyclesForWindow', 1.0, 'cyclesToSkipTransient', 1.0);
     window = validateMeasurementWindow(t, scenario.faultInsertionTime_s, f0, winOptions);
 
-    % 8. Extract RMS and Fundamental Phasors
-    rmsCurrent = extractSimulationRMS(t, iBusB, window);
-    rmsVoltage = extractSimulationRMS(t, vBusB, window);
-    phasorCurrent = estimateFundamentalPhasor(t, iBusB, window);
+    % 8. Extract RMS and Fundamental Phasors for both buses
+    rmsCurrentA = extractSimulationRMS(t, iBusA, window);
+    rmsVoltageA = extractSimulationRMS(t, vBusA, window);
+    rmsCurrentB = extractSimulationRMS(t, iBusB, window);
+    rmsVoltageB = extractSimulationRMS(t, vBusB, window);
+
+    phasorCurrentA = estimateFundamentalPhasor(t, iBusA, window);
+    phasorCurrentB = estimateFundamentalPhasor(t, iBusB, window);
+
+    if strcmp(faultedBus, 'BUS_A')
+        rmsCurrentFault = rmsCurrentA;
+        rmsVoltageFault = rmsVoltageA;
+        phasorCurrentFault = phasorCurrentA;
+    else
+        rmsCurrentFault = rmsCurrentB;
+        rmsVoltageFault = rmsVoltageB;
+        phasorCurrentFault = phasorCurrentB;
+    end
 
     % Symmetrical components calculation
-    if isfield(phasorCurrent, 'sequencePhasors') && isstruct(phasorCurrent.sequencePhasors) && isfield(phasorCurrent.sequencePhasors, 'V1')
-        I_seq = phasorCurrent.sequencePhasors;
+    if isfield(phasorCurrentFault, 'sequencePhasors') && isstruct(phasorCurrentFault.sequencePhasors) && isfield(phasorCurrentFault.sequencePhasors, 'V1')
+        I_seq = phasorCurrentFault.sequencePhasors;
     else
-        I_fund = phasorCurrent.phasorRMS;
+        I_fund = phasorCurrentFault.phasorRMS;
         I_seq = calculateSequenceComponents(I_fund(:));
     end
 
@@ -261,6 +339,7 @@ function simResult = executePhysicalSimulation(validConfig, modelId, options)
     simResult.isSimulated = true;
     simResult.time_s = t;
     simResult.isValidMeasurementWindow = window.isValid;
+    simResult.faultedBus = faultedBus;
 
     simResult.voltages_V = struct('V_BusA', vBusA, 'V_BusB', vBusB);
     simResult.currents_A = struct('I_BusA', iBusA, 'I_BusB', iBusB);
@@ -277,12 +356,14 @@ function simResult = executePhysicalSimulation(validConfig, modelId, options)
         'samplesPerCycle', window.samplesPerCycle);
 
     simResult.rms = struct( ...
-        'BUS_B', max(rmsCurrent.steadyStateRMS), ...
-        'faultCurrent_A', max(rmsCurrent.steadyStateRMS), ...
-        'I_RMS_phase', rmsCurrent.steadyStateRMS, ...
-        'V_RMS_phase', rmsVoltage.steadyStateRMS, ...
-        'I_peak', max(rmsCurrent.peakTransient), ...
-        'V_peak', max(rmsVoltage.peakTransient));
+        'faultedBus', faultedBus, ...
+        'BUS_A', max(rmsCurrentA.steadyStateRMS), ...
+        'BUS_B', max(rmsCurrentB.steadyStateRMS), ...
+        'faultCurrent_A', max(rmsCurrentFault.steadyStateRMS), ...
+        'I_RMS_phase', rmsCurrentFault.steadyStateRMS, ...
+        'V_RMS_phase', rmsVoltageFault.steadyStateRMS, ...
+        'I_peak', max(rmsCurrentFault.peakTransient), ...
+        'V_peak', max(rmsVoltageFault.peakTransient));
 
     if isstruct(I_seq)
         I0_mag = abs(I_seq.V0);
@@ -297,13 +378,65 @@ function simResult = executePhysicalSimulation(validConfig, modelId, options)
     end
 
     simResult.phasors = struct( ...
-        'BUS_B', I1_mag, ...
+        'faultedBus', faultedBus, ...
+        'BUS_A', abs(phasorCurrentA.phasorRMS(1)), ...
+        'BUS_B', abs(phasorCurrentB.phasorRMS(1)), ...
         'I1_magnitude_A', I1_mag, ...
         'I2_magnitude_A', I2_mag, ...
         'I0_magnitude_A', I0_mag, ...
-        'I_fundamental_phase', phasorCurrent.phasorRMS, ...
+        'I_fundamental_phase', phasorCurrentFault.phasorRMS, ...
         'I_sequence_012', I_seq_arr);
 
     simResult.provenance.source = 'SIMSCAPE_PHYSICAL_SIMULATION';
     simResult.provenance.timestamp = datestr(now, 'yyyy-mm-dd HH:MM:SS'); %#ok<TNOW1,DATST>
+end
+
+function compat = p_checkNetworkPhysicalCompatibility(network, scenario)
+% p_checkNetworkPhysicalCompatibility Verify that the network and scenario match the physical model.
+    compat = struct('isCompatible', true, 'reason', '');
+
+    % 1. Check supported fault locations
+    supportedBuses = {'BUS_A', 'BUS_B'};
+    if ~any(strcmpi(strtrim(scenario.faultedBus), supportedBuses))
+        compat.isCompatible = false;
+        compat.reason = sprintf( ...
+            'Physical model "radial_fault_study_network" only models faults at BUS_A and BUS_B. Requested fault location "%s" is unsupported.', ...
+            scenario.faultedBus);
+        return;
+    end
+
+    % 2. Check network voltage bases and transformer ratings if present
+    if isfield(network, 'buses') && isstruct(network.buses)
+        buses = network.buses;
+        for bIdx = 1:numel(buses)
+            if isfield(buses(bIdx), 'VbaseV') && ~isempty(buses(bIdx).VbaseV)
+                v = buses(bIdx).VbaseV;
+                % Supported model operates on 33 kV source and 11 kV feeder
+                if v > 50e3 || v < 5e3
+                    compat.isCompatible = false;
+                    compat.reason = sprintf( ...
+                        'Bus "%s" voltage base %g V is incompatible with 33/11 kV physical network model.', ...
+                        buses(bIdx).id, v);
+                    return;
+                end
+            end
+        end
+    end
+
+    if isfield(network, 'transformers') && isstruct(network.transformers)
+        tx = network.transformers;
+        for tIdx = 1:numel(tx)
+            if isfield(tx(tIdx), 'VprimaryV') && isfield(tx(tIdx), 'VsecondaryV')
+                vp = tx(tIdx).VprimaryV;
+                vs = tx(tIdx).VsecondaryV;
+                if abs(vp - 33e3) > 5e3 || abs(vs - 11e3) > 2e3
+                    compat.isCompatible = false;
+                    compat.reason = sprintf( ...
+                        'Transformer "%s" rating %g/%g V does not match 33/11 kV physical transformer.', ...
+                        tx(tIdx).id, vp, vs);
+                    return;
+                end
+            end
+        end
+    end
 end

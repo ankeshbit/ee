@@ -149,7 +149,7 @@ function cv = verifyFaultClearing(t, iBusB, tFault, openTimeB, openTimeA, thresh
     end
 
     if faultCleared
-        postExtMask = (t > extinctTime & t <= extinctTime + 2 * Tc);
+        postExtMask = (t >= tk & t <= tk + Tc);
         if any(postExtMask)
             postPeak = max(abs(iBusB(postExtMask, :)), [], 'all');
         else

@@ -89,6 +89,40 @@ classdef TestRadialBenchmarkParityRegression < matlab.unittest.TestCase
             testCase.verifyLessThan(res.faultCurrentMagnitude_A, 2200.0);
         end
 
+        function testTotalZeroSequenceImpedanceDerivationParity(testCase)
+            % Independently verify Z0 sum = Z0_source + Z0_T1 + Z0_BRA + Z0_BRB
+            % 0.10 + 0.08 + 0.15 + 0.15 = 0.48 pu
+            [~, ~, ~, Z0, hasGroundedNeutral] = traceRadialPath(testCase.net, 'BUS_B');
+            testCase.verifyTrue(hasGroundedNeutral, 'Ynyn0 network with both neutrals grounded must have grounded return.');
+            testCase.verifyEqual(Z0, 0.48, 'AbsTol', 1e-4, ...
+                'Total zero-sequence impedance to Bus B must be exactly 0.48 pu (0.10 + 0.08 + 0.15 + 0.15).');
+        end
+
+        function testUngroundedWyeWyeTransformerBlocksZeroSequence(testCase)
+            % If either neutral of a Wye-Wye transformer is ungrounded, zero-sequence path is open
+            ungroundedNet = testCase.net;
+            ungroundedNet.transformers(1).grounding = 'ungrounded';
+            [~, ~, ~, Z0, hasGroundedNeutral] = traceRadialPath(ungroundedNet, 'BUS_B');
+            testCase.verifyFalse(hasGroundedNeutral, 'Ungrounded wye-wye must not have grounded return.');
+            testCase.verifyEqual(Z0, Inf, 'Zero-sequence impedance through ungrounded wye-wye must be Inf.');
+
+            % Network validation strictly rejects ungrounded wye-wye from study execution
+            scn = struct('id', 'ANA_SLG_UNGROUNDED', 'faultedBus', 'BUS_B', 'faultType', 'SLG', 'Zf_pu', 0.0);
+            testCase.verifyError(@() runIntegratedFaultStudy(ungroundedNet, scn), ...
+                'validateTransformerConfiguration:UnsupportedGrounding');
+        end
+
+        function testDeltaGroundedWyeTransformerZeroSequenceIsolation(testCase)
+            % Delta-wye transformer isolates source Z0 (0.10 pu); Z0 originates at transformer (0.08 + 0.15 + 0.15 = 0.38 pu)
+            dynNet = testCase.net;
+            dynNet.transformers(1).windingConnection = 'delta-grounded-wye';
+            dynNet.transformers(1).grounding = 'solidly grounded';
+            [~, ~, ~, Z0, hasGroundedNeutral] = traceRadialPath(dynNet, 'BUS_B');
+            testCase.verifyTrue(hasGroundedNeutral);
+            expectedZ0 = 0.08 + 0.15 + 0.15; % 0.38 pu (excluding source 0.10 pu)
+            testCase.verifyEqual(Z0, expectedZ0, 'AbsTol', 1e-4);
+        end
     end
 
 end
+

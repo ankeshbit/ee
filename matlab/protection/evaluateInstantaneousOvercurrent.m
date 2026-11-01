@@ -33,6 +33,9 @@ function result = evaluateInstantaneousOvercurrent(current_A, settings)
 
     enabled = true;
     if isfield(settings, 'enabled') && ~isempty(settings.enabled)
+        if ~islogical(settings.enabled) && ~(isnumeric(settings.enabled) && isscalar(settings.enabled) && (settings.enabled == 0 || settings.enabled == 1))
+            error('evaluateInstantaneousOvercurrent:InvalidEnabled', 'settings.enabled must be a scalar logical.');
+        end
         enabled = logical(settings.enabled);
     end
 

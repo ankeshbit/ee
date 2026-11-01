@@ -32,13 +32,16 @@ function result = evaluateNegativeSequenceProtection(currents_A, settings)
         error('evaluateNegativeSequenceProtection:InvalidSettings', 'settings must be a scalar struct.');
     end
 
-    if isempty(currents_A) || ~isnumeric(currents_A) || numel(currents_A) < 3 || any(~isfinite(currents_A(:)))
+    if isempty(currents_A) || ~isnumeric(currents_A) || ~isvector(currents_A) || numel(currents_A) ~= 3 || any(~isfinite(currents_A(:)))
         error('evaluateNegativeSequenceProtection:InvalidCurrent', ...
             'currents_A must be a 3-element finite numeric array [Ia, Ib, Ic].');
     end
 
     enabled = true;
     if isfield(settings, 'enabled') && ~isempty(settings.enabled)
+        if ~islogical(settings.enabled) && ~(isnumeric(settings.enabled) && isscalar(settings.enabled) && (settings.enabled == 0 || settings.enabled == 1))
+            error('evaluateNegativeSequenceProtection:InvalidEnabled', 'settings.enabled must be a scalar logical.');
+        end
         enabled = logical(settings.enabled);
     end
 
@@ -52,23 +55,34 @@ function result = evaluateNegativeSequenceProtection(currents_A, settings)
 
     mode = 'definite';
     if isfield(settings, 'mode') && ~isempty(settings.mode)
+        if ~ischar(settings.mode) && ~isstring(settings.mode)
+            error('evaluateNegativeSequenceProtection:InvalidMode', 'settings.mode must be a char or string.');
+        end
         mode = lower(strtrim(char(settings.mode)));
+        if ~any(strcmp(mode, {'definite', 'thermal'}))
+            error('evaluateNegativeSequenceProtection:InvalidMode', ...
+                'Unsupported settings.mode "%s". Must be ''definite'' or ''thermal''.', mode);
+        end
     end
 
     definiteDelay_s = 1.0;
     if isfield(settings, 'definiteDelay_s') && ~isempty(settings.definiteDelay_s)
-        if isnumeric(settings.definiteDelay_s) && isscalar(settings.definiteDelay_s) && ...
-           isreal(settings.definiteDelay_s) && isfinite(settings.definiteDelay_s) && settings.definiteDelay_s >= 0
-            definiteDelay_s = double(settings.definiteDelay_s);
+        if ~isnumeric(settings.definiteDelay_s) || ~isscalar(settings.definiteDelay_s) || ...
+           ~isreal(settings.definiteDelay_s) || ~isfinite(settings.definiteDelay_s) || settings.definiteDelay_s < 0
+            error('evaluateNegativeSequenceProtection:InvalidDefiniteDelay', ...
+                'settings.definiteDelay_s must be a finite non-negative scalar.');
         end
+        definiteDelay_s = double(settings.definiteDelay_s);
     end
 
     thermalK = 10.0;
     if isfield(settings, 'thermalK') && ~isempty(settings.thermalK)
-        if isnumeric(settings.thermalK) && isscalar(settings.thermalK) && ...
-           isreal(settings.thermalK) && isfinite(settings.thermalK) && settings.thermalK > 0
-            thermalK = double(settings.thermalK);
+        if ~isnumeric(settings.thermalK) || ~isscalar(settings.thermalK) || ...
+           ~isreal(settings.thermalK) || ~isfinite(settings.thermalK) || settings.thermalK <= 0
+            error('evaluateNegativeSequenceProtection:InvalidThermalK', ...
+                'settings.thermalK must be a finite positive scalar.');
         end
+        thermalK = double(settings.thermalK);
     end
 
     % Calculate sequence components using Fortescue transformation
@@ -84,10 +98,14 @@ function result = evaluateNegativeSequenceProtection(currents_A, settings)
         I2 = abs(I_seq(3));
     end
 
-    if I1 > eps
-        unbalanceRatio_pct = 100 * (I2 / I1);
+    if I1 > 1e-6
+        unbalanceRatio_pct = 100.0 * (I2 / I1);
     else
-        unbalanceRatio_pct = 0.0;
+        if I2 > 1e-6
+            unbalanceRatio_pct = Inf; % Pure negative-sequence: infinite unbalance ratio
+        else
+            unbalanceRatio_pct = 0.0; % Zero current: 0% unbalance
+        end
     end
 
     operates = enabled && (I2 >= pickup_A);

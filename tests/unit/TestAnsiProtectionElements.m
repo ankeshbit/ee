@@ -112,7 +112,81 @@ classdef TestAnsiProtectionElements < matlab.unittest.TestCase
             testCase.verifyGreaterThan(res.operatingTime_s, 0);
         end
 
+        %% 4. Phase 6 Regression Tests: Strict Validation & Edge Cases
+        function testEarthFaultRejectsInvalidInstPickup(testCase)
+            settings = struct('pickupCurrent_A', 100.0, 'instPickup_A', -10.0);
+            testCase.verifyError(@() evaluateEarthFaultProtection([100, 0, 0], settings), ...
+                'evaluateEarthFaultProtection:InvalidInstPickup');
+        end
+
+        function testEarthFaultRejectsUnsupportedCurve(testCase)
+            settings = struct('pickupCurrent_A', 100.0, 'curveType', 'arbitrary_nonexistent_curve');
+            testCase.verifyError(@() evaluateEarthFaultProtection([100, 0, 0], settings), ...
+                'evaluateEarthFaultProtection:UnsupportedCurveType');
+        end
+
+        function testEarthFaultRejectsInvalidEnabled(testCase)
+            settings = struct('pickupCurrent_A', 100.0, 'enabled', 'invalid_string');
+            testCase.verifyError(@() evaluateEarthFaultProtection([100, 0, 0], settings), ...
+                'evaluateEarthFaultProtection:InvalidEnabled');
+        end
+
+        function testEarthFaultRejectsInvalidCurrentDimensions(testCase)
+            settings = struct('pickupCurrent_A', 100.0);
+            testCase.verifyError(@() evaluateEarthFaultProtection([100, 0, 0, 0, 0], settings), ...
+                'evaluateEarthFaultProtection:InvalidCurrent');
+        end
+
+        function testNegativeSequencePureNegativeZeroPositiveYieldsInfiniteUnbalance(testCase)
+            % Pure negative-sequence current: a = 1, b = e^(j*2pi/3), c = e^(-j*2pi/3)
+            % Sequence components: I1 = 0, I2 = 100 A
+            Ia = 100 * exp(1j * 0);
+            Ib = 100 * exp(1j * 2*pi/3);
+            Ic = 100 * exp(-1j * 2*pi/3);
+
+            settings = struct('pickupCurrent_A', 50.0);
+            res = evaluateNegativeSequenceProtection([Ia, Ib, Ic], settings);
+
+            testCase.verifyTrue(res.operates);
+            testCase.verifyEqual(res.tripStatus, 'TRIPPED');
+            testCase.verifyLessThan(res.I1_magnitude_A, 1e-4);
+            testCase.verifyEqual(res.I2_magnitude_A, 100.0, 'AbsTol', 1e-4);
+            % When I1 = 0 and I2 > 0, unbalance ratio must be Inf (never 0%)
+            testCase.verifyTrue(isinf(res.unbalanceRatio_pct), ...
+                'Pure negative-sequence current with I1=0 must report unbalanceRatio_pct as Inf, not 0%.');
+        end
+
+        function testNegativeSequenceRejectsInvalidMode(testCase)
+            settings = struct('pickupCurrent_A', 50.0, 'mode', 'unsupported_mode');
+            testCase.verifyError(@() evaluateNegativeSequenceProtection([100, 0, 0], settings), ...
+                'evaluateNegativeSequenceProtection:InvalidMode');
+        end
+
+        function testNegativeSequenceRejectsInvalidThermalK(testCase)
+            settings = struct('pickupCurrent_A', 50.0, 'mode', 'thermal', 'thermalK', -5.0);
+            testCase.verifyError(@() evaluateNegativeSequenceProtection([100, 0, 0], settings), ...
+                'evaluateNegativeSequenceProtection:InvalidThermalK');
+        end
+
+        function testNegativeSequenceRejectsInvalidDefiniteDelay(testCase)
+            settings = struct('pickupCurrent_A', 50.0, 'definiteDelay_s', -1.0);
+            testCase.verifyError(@() evaluateNegativeSequenceProtection([100, 0, 0], settings), ...
+                'evaluateNegativeSequenceProtection:InvalidDefiniteDelay');
+        end
+
+        function testNegativeSequenceRejectsInvalidEnabled(testCase)
+            settings = struct('pickupCurrent_A', 50.0, 'enabled', [1, 0, 1]);
+            testCase.verifyError(@() evaluateNegativeSequenceProtection([100, 0, 0], settings), ...
+                'evaluateNegativeSequenceProtection:InvalidEnabled');
+        end
+
+        function testInstantaneousOvercurrentRejectsInvalidEnabled(testCase)
+            settings = struct('pickupCurrent_A', 500.0, 'enabled', 'invalid');
+            testCase.verifyError(@() evaluateInstantaneousOvercurrent(600.0, settings), ...
+                'evaluateInstantaneousOvercurrent:InvalidEnabled');
+        end
     end
 
 end
+
 

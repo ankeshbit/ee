@@ -17,7 +17,7 @@ The benchmark system is an authoritative 33/11 kV radial distribution feeder sup
         |
     (Bus 33kV)
         |
-  [ Transformer T1 ]  33/11 kV, 10 MVA, Dyn11, Z = 0.08 pu
+  [ Transformer T1 ]  33/11 kV, 10 MVA, Ynyn0 (solidly grounded Yg-Yg), Z = 0.08 pu
         |
     (Bus 11kV)
         |
@@ -48,10 +48,10 @@ According to standard 3-phase per-unit definition:
    - $Z_{1,\text{source}} = j0.100\text{ pu}$
    - $Z_{2,\text{source}} = j0.100\text{ pu}$
    - $Z_{0,\text{source}} = j0.100\text{ pu}$
-2. **Transformer T1 (33/11 kV, 10 MVA, Delta/Grounded-Wye):**
+2. **Transformer T1 (33/11 kV, 10 MVA, Grounded-Wye/Grounded-Wye, Ynyn0):**
    - $Z_{1,\text{T1}} = j0.080\text{ pu}$
    - $Z_{2,\text{T1}} = j0.080\text{ pu}$
-   - $Z_{0,\text{T1}} = j0.080\text{ pu}$ (grounded-wye neutral grounded solidly; zero-sequence isolated from 33 kV delta side)
+   - $Z_{0,\text{T1}} = j0.080\text{ pu}$ (both primary and secondary neutrals solidly grounded; 0° phase displacement)
 3. **Feeder Section A (11 kV):**
    - $Z_{1,\text{LineA}} = j0.050\text{ pu}$
    - $Z_{2,\text{LineA}} = j0.050\text{ pu}$
@@ -67,8 +67,9 @@ According to standard 3-phase per-unit definition:
 - **Negative-Sequence Impedance ($Z_2$):**
   $$Z_2 = Z_1 = j0.280\text{ pu}$$
 - **Zero-Sequence Impedance ($Z_0$):**
-  Due to the Delta-Wye transformer connection with solidly grounded neutral at the 11 kV secondary, the zero-sequence path to ground originates at the transformer secondary:
-  $$Z_0 = Z_{0,\text{T1}} + Z_{0,\text{LineA}} + Z_{0,\text{LineB}} = 0.08 + 0.15 + 0.15 = j0.480\text{ pu}$$
+  For the authoritative Grounded-Wye / Grounded-Wye (Ynyn0) transformer with both neutrals solidly grounded, zero-sequence current circulates through both windings into the source grid neutral:
+  $$Z_0 = Z_{0,\text{source}} + Z_{0,\text{T1}} + Z_{0,\text{LineA}} + Z_{0,\text{LineB}} = 0.10 + 0.08 + 0.15 + 0.15 = \mathbf{j0.480\text{ pu}}$$
+  *(Note on topology comparison: If an alternative Delta-Grounded-Wye / Dyn11 transformer were employed, the delta winding would isolate upstream zero-sequence current from the 33 kV source, yielding $Z_{0,\text{Dyn11}} = Z_{0,\text{T1}} + Z_{0,\text{LineA}} + Z_{0,\text{LineB}} = 0.08 + 0.15 + 0.15 = j0.380\text{ pu}$ with a 30° positive-sequence phase displacement).*
 
 ---
 

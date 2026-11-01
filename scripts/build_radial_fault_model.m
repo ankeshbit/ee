@@ -99,6 +99,7 @@ function modelPath = build_radial_fault_model(targetDir)
         add_block('ee_lib/Sensors & Transducers/Phase Voltage Sensor (Three-Phase)', [modelName, '/V_Sensor_BusA']);
         add_block('ee_lib/Switches & Breakers/Circuit Breaker (Three-Phase)', [modelName, '/CB_BUS_A']);
         add_block('ee_lib/Sensors & Transducers/Current Sensor (Three-Phase)', [modelName, '/I_Sensor_BusA']);
+        add_block('ee_lib/Utilities/Fault (Three-Phase)', [modelName, '/Fault_BusA']);
 
         % Feeder BR_B (Bus A to Bus B)
         add_block('ee_lib/Passive/RLC Assemblies/RLC (Three-Phase)', [modelName, '/Feeder_BRB']);
@@ -216,6 +217,19 @@ function modelPath = build_radial_fault_model(targetDir)
             'R_ng_fault', '0.001', ...
             'R_ng_fault_unit', 'Ohm');
 
+        % Three-Phase Fault Element at Bus A (temporal disabled by default)
+        set_param([modelName, '/Fault_BusA'], ...
+            'fault_type_option', 'ee.enum.fault_type_option.abc', ...
+            'enable_temporal_fault', 'ee.enum.enable.no', ...
+            'fault_start_time', '999.0', ...
+            'fault_start_time_unit', 's', ...
+            'fault_duration', '0.20', ...
+            'fault_duration_unit', 's', ...
+            'R_pn_fault', '0.001', ...
+            'R_pn_fault_unit', 'Ohm', ...
+            'R_ng_fault', '0.001', ...
+            'R_ng_fault_unit', 'Ohm');
+
         % Three-Phase Circuit Breakers: R_closed = 0.001 Ohm, G_open = 1e-6 S
         cbList = {'CB_33KV', 'CB_BUS_A', 'CB_BUS_B'};
         for cIdx = 1:numel(cbList)
@@ -255,6 +269,9 @@ function modelPath = build_radial_fault_model(targetDir)
         % Bus A Stabilization Shunt to Ground
         add_line(modelName, 'Feeder_BRA/RConn1', 'Shunt_BusA/LConn1', 'autorouting', 'on');
         add_line(modelName, 'Shunt_BusA/RConn1', 'BusA_Neutral_GND/LConn1', 'autorouting', 'on');
+
+        % Bus A Fault Element
+        add_line(modelName, 'Feeder_BRA/RConn1', 'Fault_BusA/LConn1', 'autorouting', 'on');
 
         % Bus A -> CB_BUS_A -> I_Sensor_BusA -> Feeder BR_B
         add_line(modelName, 'Feeder_BRA/RConn1', 'CB_BUS_A/LConn2', 'autorouting', 'on');

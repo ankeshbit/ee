@@ -104,7 +104,7 @@ The repository test suite consists of 37 test classes spanning unit, integration
 
 ## 5. Continuous Integration (GitHub Actions)
 
-Workflow [`.github/workflows/tests.yml`](file:///c:/Users/ankes/.github/workflows/tests.yml) is separated into two parallel jobs:
+Workflow [`.github/workflows/tests.yml`](file:///c:/Users/ankes/.github/workflows/tests.yml) is structured as a two-stage sequential pipeline (`needs: analytical-unit-tests`):
 1. `analytical-unit-tests`: Runs on standard GitHub-hosted runner executing the 29 unit test classes (all matrix math, sequence transforms, ANSI elements, and regression suites) without requiring paid toolbox licenses.
 2. `simulink-integration-tests`: Executes dynamic Simulink and Simscape simulations on runners equipped with MATLAB licenses, archiving test results and code coverage XML artifacts.
 
