@@ -56,5 +56,9 @@ test-results/
 *.jpeg
 *.pdf
 
+# Keep curated documentation figures (e.g. docs/images/*.png for the README)
+!docs/images/
+!docs/images/*.png
+
 # Scratch / temporary debug scripts
 scratch/

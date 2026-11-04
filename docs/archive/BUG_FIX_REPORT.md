@@ -17,9 +17,9 @@ During Phase 1 audit and Phase 2 deep-dive remediation, eight critical architect
 ## 1. Bug 2.1 — False-Positive Acceptance Validation
 
 ### 1.1 Target & Location
-- Primary Target: [`scripts/run_complete_fault_study.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/scripts/run_complete_fault_study.m) (`p_evaluateAcceptance`)
-- New Modular Engine: [`matlab/analysis/evaluateStudyAcceptanceCriteria.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/evaluateStudyAcceptanceCriteria.m)
-- Regression Suite: [`tests/unit/TestAcceptanceValidationRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestAcceptanceValidationRegression.m)
+- Primary Target: [`scripts/run_complete_fault_study.m`](../../scripts/run_complete_fault_study.m) (`p_evaluateAcceptance`)
+- New Modular Engine: [`matlab/analysis/evaluateStudyAcceptanceCriteria.m`](../../matlab/analysis/evaluateStudyAcceptanceCriteria.m)
+- Regression Suite: [`tests/unit/TestAcceptanceValidationRegression.m`](../../tests/unit/TestAcceptanceValidationRegression.m)
 
 ### 1.2 Root Cause Analysis
 The original acceptance logic evaluated:
@@ -34,14 +34,14 @@ end
 When all simulation scenarios were blocked (e.g., license unavailable or unexecuted runs), `outcomes` was an empty array. In MATLAB, `all([])` evaluates to `true`, and the explicit `isempty` branch erroneously set `overallPass = true`. A complete study with zero successful simulations reported false-positive `PASS`.
 
 ### 1.3 Correction Implementation
-Implemented [`evaluateStudyAcceptanceCriteria.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/evaluateStudyAcceptanceCriteria.m) with strict contract semantics:
+Implemented [`evaluateStudyAcceptanceCriteria.m`](../../matlab/analysis/evaluateStudyAcceptanceCriteria.m) with strict contract semantics:
 1. **Explicit Four-State Enum:** Overall status is strictly partitioned into `PASS`, `FAIL`, `BLOCKED`, and `INCOMPLETE`.
 2. **Zero-Outcome Rejection:** If `numCriteria == 0`, status cannot be `PASS`. If all simulation runs were blocked, overall status is `BLOCKED`. If empty with no valid runs, status is `INCOMPLETE`.
 3. **Mandatory Scenario Enforcement:** Verifies that required scenarios (`SIM_3PH_BUS_B`, `SIM_SLG_BUS_B`, `SIM_LL_BUS_B`, `SIM_DLG_BUS_B`, `HEALTHY_BUS_B`) are present and evaluated.
 4. **Blocked vs. Failed Distinction:** Distinguishes environment blockage (`BLOCKED_LICENSE`, `UNSUPPORTED_PLATFORM`) from actual numerical or clearing failures (`FAIL`).
 
 ### 1.4 Verification & Regression Evidence
-[`TestAcceptanceValidationRegression`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestAcceptanceValidationRegression.m) executes 8 test cases:
+[`TestAcceptanceValidationRegression`](../../tests/unit/TestAcceptanceValidationRegression.m) executes 8 test cases:
 - `testZeroEvaluatedCriteriaFailsOrBlocks`: Empty outcome array produces `INCOMPLETE` / `BLOCKED`.
 - `testAllSimulationsBlockedProducesBlocked`: Returns `BLOCKED`.
 - `testOneMandatoryScenarioFailsProducesFail`: Returns `FAIL`.
@@ -56,8 +56,8 @@ Implemented [`evaluateStudyAcceptanceCriteria.m`](file:///c:/Users/ankes/OneDriv
 ## 2. Bug 2.2 — Transient Measurement-Window Fallback
 
 ### 2.1 Target & Location
-- Primary Target: [`matlab/analysis/validateMeasurementWindow.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/validateMeasurementWindow.m)
-- Regression Suite: [`tests/unit/TestMeasurementWindowValidationRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestMeasurementWindowValidationRegression.m)
+- Primary Target: [`matlab/analysis/validateMeasurementWindow.m`](../../matlab/analysis/validateMeasurementWindow.m)
+- Regression Suite: [`tests/unit/TestMeasurementWindowValidationRegression.m`](../../tests/unit/TestMeasurementWindowValidationRegression.m)
 
 ### 2.2 Root Cause Analysis
 The original code contained a dangerous silent fallback:
@@ -78,15 +78,15 @@ If the simulation ended before transient settling completed (e.g., simulation st
    - Rejects non-finite values, negative frequencies, and negative time vectors.
 
 ### 2.4 Verification & Regression Evidence
-[`TestMeasurementWindowValidationRegression`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestMeasurementWindowValidationRegression.m) executes 10 test cases covering 50 Hz, 60 Hz, sub-cycle durations, non-monotonic timestamps, irregular time vectors, and insufficient samples/cycle. All 10 tests pass.
+[`TestMeasurementWindowValidationRegression`](../../tests/unit/TestMeasurementWindowValidationRegression.m) executes 10 test cases covering 50 Hz, 60 Hz, sub-cycle durations, non-monotonic timestamps, irregular time vectors, and insufficient samples/cycle. All 10 tests pass.
 
 ---
 
 ## 3. Bug 2.3 — Analytical vs. Simulation Comparison Input Validation
 
 ### 3.1 Target & Location
-- Primary Target: [`matlab/analysis/compareAnalyticalAndSimulation.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/compareAnalyticalAndSimulation.m)
-- Regression Suite: [`tests/unit/TestCompareAnalyticalAndSimulationRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestCompareAnalyticalAndSimulationRegression.m)
+- Primary Target: [`matlab/analysis/compareAnalyticalAndSimulation.m`](../../matlab/analysis/compareAnalyticalAndSimulation.m)
+- Regression Suite: [`tests/unit/TestCompareAnalyticalAndSimulationRegression.m`](../../tests/unit/TestCompareAnalyticalAndSimulationRegression.m)
 
 ### 3.2 Root Cause Analysis
 The function accepted non-finite values (`NaN`, `Inf`), ignored negative tolerances, failed to validate voltage and power bases, assumed simulation results were valid regardless of `simResult.isValidMeasurementWindow`, and allowed invalid comparisons to return `pass = true`.
@@ -104,15 +104,15 @@ The function accepted non-finite values (`NaN`, `Inf`), ignored negative toleran
    - Returns explicit status: `PASSED`, `FAILED`, `BLOCKED`, `SKIPPED`, `INVALID_MEASUREMENT`, `INCOMPATIBLE_BASIS`.
 
 ### 3.4 Verification & Regression Evidence
-[`TestCompareAnalyticalAndSimulationRegression`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestCompareAnalyticalAndSimulationRegression.m) executes 11 test cases across NaN, Inf, zero analytical values, base mismatches, negative tolerances, and unsimulated results. All 11 tests pass.
+[`TestCompareAnalyticalAndSimulationRegression`](../../tests/unit/TestCompareAnalyticalAndSimulationRegression.m) executes 11 test cases across NaN, Inf, zero analytical values, base mismatches, negative tolerances, and unsimulated results. All 11 tests pass.
 
 ---
 
 ## 4. Bug 2.4 — Sliding RMS Extinction & Fault-Clearing Verification
 
 ### 4.1 Target & Location
-- Primary Target: [`matlab/analysis/verifyFaultClearing.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/verifyFaultClearing.m)
-- Regression Suite: [`tests/unit/TestVerifyFaultClearingRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestVerifyFaultClearingRegression.m)
+- Primary Target: [`matlab/analysis/verifyFaultClearing.m`](../../matlab/analysis/verifyFaultClearing.m)
+- Regression Suite: [`tests/unit/TestVerifyFaultClearingRegression.m`](../../tests/unit/TestVerifyFaultClearingRegression.m)
 
 ### 4.2 Root Cause Analysis
 The original fault-clearing detector:
@@ -132,15 +132,15 @@ The original fault-clearing detector:
    - `INVALID_INPUT`: Non-monotonic time vector, dimension mismatch, or non-finite inputs.
 
 ### 4.4 Verification & Regression Evidence
-[`TestVerifyFaultClearingRegression`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestVerifyFaultClearingRegression.m) verifies 7 test cases. All 7 tests pass.
+[`TestVerifyFaultClearingRegression`](../../tests/unit/TestVerifyFaultClearingRegression.m) verifies 7 test cases. All 7 tests pass.
 
 ---
 
 ## 5. Bug 2.5 — Incomplete Simulation-Result Contract Validation
 
 ### 5.1 Target & Location
-- Primary Target: [`matlab/analysis/validateSimulationResult.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/validateSimulationResult.m)
-- Regression Suite: [`tests/unit/TestSimulationResultValidationRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestSimulationResultValidationRegression.m)
+- Primary Target: [`matlab/analysis/validateSimulationResult.m`](../../matlab/analysis/validateSimulationResult.m)
+- Regression Suite: [`tests/unit/TestSimulationResultValidationRegression.m`](../../tests/unit/TestSimulationResultValidationRegression.m)
 
 ### 5.2 Root Cause Analysis
 The validator only checked for field existence, not data integrity. Unsimulated results containing fabricated waveforms were accepted as valid; non-finite numbers and dimension mismatches between `time_s` and `voltages_V` were ignored.
@@ -152,15 +152,15 @@ The validator only checked for field existence, not data integrity. Unsimulated 
 4. **Metadata Integrity:** Verifies `sampling.sampleRate_Hz > 0` and `numSamples == numel(time_s)`.
 
 ### 5.4 Verification & Regression Evidence
-[`TestSimulationResultValidationRegression`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestSimulationResultValidationRegression.m) runs 8 test cases. All 8 tests pass.
+[`TestSimulationResultValidationRegression`](../../tests/unit/TestSimulationResultValidationRegression.m) runs 8 test cases. All 8 tests pass.
 
 ---
 
 ## 6. Bugs 2.6 & 2.7 — Missing Simulink Output Zero-Substitution & Timestamp Interpolation
 
 ### 6.1 Target & Location
-- Primary Target: [`matlab/analysis/runDynamicBreakerSwitchingSimulation.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/runDynamicBreakerSwitchingSimulation.m)
-- Regression Suite: [`tests/unit/TestBreakerSwitchingExtractionRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestBreakerSwitchingExtractionRegression.m)
+- Primary Target: [`matlab/analysis/runDynamicBreakerSwitchingSimulation.m`](../../matlab/analysis/runDynamicBreakerSwitchingSimulation.m)
+- Regression Suite: [`tests/unit/TestBreakerSwitchingExtractionRegression.m`](../../tests/unit/TestBreakerSwitchingExtractionRegression.m)
 
 ### 6.2 Root Cause Analysis
 - **Bug 2.6:** In `p_extractPort()`, missing mandatory ports were replaced with `zeros(nT, 1)`. If a trip signal or breaker port was missing, the function silently treated it as "no trip", falsifying protection coordination studies.
@@ -180,17 +180,17 @@ The validator only checked for field existence, not data integrity. Unsimulated 
    - Robustly handles Simulink `SimulationData.Dataset`, `SimulationData.Signal`, and direct `timeseries` objects via `p_safeNumElements` and polymorphic data extraction.
 
 ### 6.4 Verification & Regression Evidence
-[`TestBreakerSwitchingExtractionRegression`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestBreakerSwitchingExtractionRegression.m) runs 3 test cases. All 3 tests pass.
+[`TestBreakerSwitchingExtractionRegression`](../../tests/unit/TestBreakerSwitchingExtractionRegression.m) runs 3 test cases. All 3 tests pass.
 
 ---
 
 ## 7. Bug 2.8 — Incorrect Network Configuration & Per-Unit Benchmark Calculations
 
 ### 7.1 Target & Location
-- Primary Target: [`scripts/run_radial_fault_simulation.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/scripts/run_radial_fault_simulation.m)
-- Authoritative Configuration: [`matlab/configuration/createRadialRelayStudyConfiguration.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/configuration/createRadialRelayStudyConfiguration.m)
-- Fault Study Engine: [`matlab/analysis/runIntegratedFaultStudy.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/runIntegratedFaultStudy.m)
-- Regression Suite: [`tests/unit/TestRadialBenchmarkParityRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestRadialBenchmarkParityRegression.m)
+- Primary Target: [`scripts/run_radial_fault_simulation.m`](../../scripts/run_radial_fault_simulation.m)
+- Authoritative Configuration: [`matlab/configuration/createRadialRelayStudyConfiguration.m`](../../matlab/protection/createRadialRelayStudyConfiguration.m)
+- Fault Study Engine: [`matlab/analysis/runIntegratedFaultStudy.m`](../../matlab/analysis/runIntegratedFaultStudy.m)
+- Regression Suite: [`tests/unit/TestRadialBenchmarkParityRegression.m`](../../tests/unit/TestRadialBenchmarkParityRegression.m)
 
 ### 7.2 Root Cause Analysis
 The script `run_radial_fault_simulation.m` invoked `createIllustrativeRadialNetwork()`, which lacked a transformer, while the reporting documentation hardcoded expected transformer impedance (0.08 pu) into the total impedance. Furthermore, base conversions between 33 kV and 11 kV were inconsistent.
@@ -213,7 +213,7 @@ The script `run_radial_fault_simulation.m` invoked `createIllustrativeRadialNetw
 5. **No Hardcoded Values:** Script dynamically calls `runIntegratedFaultStudy` and `traceRadialPath`.
 
 ### 7.4 Verification & Regression Evidence
-[`TestRadialBenchmarkParityRegression`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestRadialBenchmarkParityRegression.m) verifies all 4 fault types, transformer parameters, base values, and impedance tracing. All 7 tests pass.
+[`TestRadialBenchmarkParityRegression`](../../tests/unit/TestRadialBenchmarkParityRegression.m) verifies all 4 fault types, transformer parameters, base values, and impedance tracing. All 7 tests pass.
 
 ---
 

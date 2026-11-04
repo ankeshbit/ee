@@ -12,43 +12,43 @@
 ## 1. Summary of Inspected and Modified Files
 
 ### Files Inspected
-- [`matlab/analysis/runDynamicFaultSimulation.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/runDynamicFaultSimulation.m)
-- [`scripts/build_radial_fault_model.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/scripts/build_radial_fault_model.m)
-- [`matlab/analysis/createSimulationResultSchema.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/createSimulationResultSchema.m)
-- [`matlab/analysis/validateSimulationResult.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/validateSimulationResult.m)
-- [`matlab/analysis/validateSimulationInput.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/validateSimulationInput.m)
-- [`matlab/analysis/runDynamicBreakerSwitchingSimulation.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/runDynamicBreakerSwitchingSimulation.m)
-- [`matlab/analysis/verifyFaultClearing.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/verifyFaultClearing.m)
-- [`matlab/analysis/evaluateStudyAcceptanceCriteria.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/evaluateStudyAcceptanceCriteria.m)
-- [`matlab/config/getSystemMasterConfiguration.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/config/getSystemMasterConfiguration.m)
-- [`matlab/network/traceRadialPath.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/network/traceRadialPath.m)
-- [`matlab/network/validateRadialNetwork.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/network/validateRadialNetwork.m)
-- [`matlab/network/validateTransformerConfiguration.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/network/validateTransformerConfiguration.m)
-- [`matlab/protection/evaluateEarthFaultProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateEarthFaultProtection.m)
-- [`matlab/protection/evaluateNegativeSequenceProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateNegativeSequenceProtection.m)
-- [`matlab/protection/evaluateInstantaneousOvercurrent.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateInstantaneousOvercurrent.m)
-- [`matlab/protection/calculateRelayOperatingTime.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/calculateRelayOperatingTime.m)
-- [`.github/workflows/tests.yml`](file:///c:/Users/ankes/OneDrive/Desktop/ee/.github/workflows/tests.yml)
-- [`docs/ENGINEERING_VALIDATION_REPORT.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/ENGINEERING_VALIDATION_REPORT.md)
-- [`docs/TEST_COVERAGE_REPORT.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/TEST_COVERAGE_REPORT.md)
-- [`docs/assumptions.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/assumptions.md)
+- [`matlab/analysis/runDynamicFaultSimulation.m`](../../matlab/analysis/runDynamicFaultSimulation.m)
+- [`scripts/build_radial_fault_model.m`](../../scripts/build_radial_fault_model.m)
+- [`matlab/analysis/createSimulationResultSchema.m`](../../matlab/analysis/createSimulationResultSchema.m)
+- [`matlab/analysis/validateSimulationResult.m`](../../matlab/analysis/validateSimulationResult.m)
+- [`matlab/analysis/validateSimulationInput.m`](../../matlab/analysis/validateSimulationInput.m)
+- [`matlab/analysis/runDynamicBreakerSwitchingSimulation.m`](../../matlab/analysis/runDynamicBreakerSwitchingSimulation.m)
+- [`matlab/analysis/verifyFaultClearing.m`](../../matlab/analysis/verifyFaultClearing.m)
+- [`matlab/analysis/evaluateStudyAcceptanceCriteria.m`](../../matlab/analysis/evaluateStudyAcceptanceCriteria.m)
+- [`matlab/config/getSystemMasterConfiguration.m`](../../matlab/config/getSystemMasterConfiguration.m)
+- [`matlab/network/traceRadialPath.m`](../../matlab/network/traceRadialPath.m)
+- [`matlab/network/validateRadialNetwork.m`](../../matlab/network/validateRadialNetwork.m)
+- [`matlab/network/validateTransformerConfiguration.m`](../../matlab/network/validateTransformerConfiguration.m)
+- [`matlab/protection/evaluateEarthFaultProtection.m`](../../matlab/protection/evaluateEarthFaultProtection.m)
+- [`matlab/protection/evaluateNegativeSequenceProtection.m`](../../matlab/protection/evaluateNegativeSequenceProtection.m)
+- [`matlab/protection/evaluateInstantaneousOvercurrent.m`](../../matlab/protection/evaluateInstantaneousOvercurrent.m)
+- [`matlab/protection/calculateRelayOperatingTime.m`](../../matlab/protection/calculateRelayOperatingTime.m)
+- [`.github/workflows/tests.yml`](../../.github/workflows/tests.yml)
+- [`docs/ENGINEERING_VALIDATION_REPORT.md`](../../docs/ENGINEERING_VALIDATION_REPORT.md)
+- [`docs/TEST_COVERAGE_REPORT.md`](../../docs/TEST_COVERAGE_REPORT.md)
+- [`docs/assumptions.md`](../../docs/assumptions.md)
 
 ### Files Modified
-1. [`scripts/build_radial_fault_model.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/scripts/build_radial_fault_model.m) — Added `Fault_BusA` block connected to Bus A physical node, configured temporal disabled by default.
-2. [`simulink/models/radial_fault_study_network.slx`](file:///c:/Users/ankes/OneDrive/Desktop/ee/simulink/models/radial_fault_study_network.slx) — Recompiled and saved with dual fault blocks (`Fault_BusA` and `Fault_BusB`).
-3. [`matlab/analysis/createSimulationResultSchema.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/createSimulationResultSchema.m) — Added `'UNSUPPORTED'` and `'INCOMPLETE'` contract statuses.
-4. [`matlab/analysis/validateSimulationResult.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/validateSimulationResult.m) — Enforced non-simulated semantics for `'UNSUPPORTED'` and `'INCOMPLETE'`.
-5. [`matlab/analysis/runDynamicFaultSimulation.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/runDynamicFaultSimulation.m) — Added physical model network compatibility checking, explicit fault bus dispatch (Bus A vs Bus B), and dataset measurement verification.
-6. [`matlab/network/traceRadialPath.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/network/traceRadialPath.m) — Added strict zero-sequence isolation logic for Wye-Wye transformers with ungrounded neutrals.
-7. [`matlab/protection/evaluateEarthFaultProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateEarthFaultProtection.m) — Added strict validation for `instPickup_A`, IEC curves, `enabled`, and current vector dimensions.
-8. [`matlab/protection/evaluateNegativeSequenceProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateNegativeSequenceProtection.m) — Added strict validation for `mode`, `thermalK`, `definiteDelay_s`, and resolved the $I_1=0, I_2>0$ zero positive-sequence infinite unbalance edge case.
-9. [`matlab/protection/evaluateInstantaneousOvercurrent.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateInstantaneousOvercurrent.m) — Enforced scalar boolean `enabled` validation.
-10. [`matlab/analysis/verifyFaultClearing.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/verifyFaultClearing.m) — Corrected post-clearing peak measurement window to evaluate once extinction is established ($t \ge tk$).
-11. [`tests/unit/TestDynamicSimulationEntryPoint.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestDynamicSimulationEntryPoint.m) — Added regression tests for Bus A fault simulation, unsupported bus rejection, and incompatible network rejection.
-12. [`tests/unit/TestRadialBenchmarkParityRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestRadialBenchmarkParityRegression.m) — Added tests for zero-sequence impedance derivation ($0.48\text{ pu}$), ungrounded wye-wye isolation, and delta-wye isolation.
-13. [`tests/unit/TestANSIProtectionElements.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestANSIProtectionElements.m) — Added 10 regression tests for strict validation errors and $I_1=0$ infinite unbalance.
-14. [`docs/ENGINEERING_VALIDATION_REPORT.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/ENGINEERING_VALIDATION_REPORT.md) — Aligned diagrams and formulas with the authoritative Ynyn0 transformer configuration.
-15. [`docs/TEST_COVERAGE_REPORT.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/TEST_COVERAGE_REPORT.md) — Reconciled CI pipeline description to two-stage sequential execution.
+1. [`scripts/build_radial_fault_model.m`](../../scripts/build_radial_fault_model.m) — Added `Fault_BusA` block connected to Bus A physical node, configured temporal disabled by default.
+2. [`simulink/models/radial_fault_study_network.slx`](../../simulink/models/radial_fault_study_network.slx) — Recompiled and saved with dual fault blocks (`Fault_BusA` and `Fault_BusB`).
+3. [`matlab/analysis/createSimulationResultSchema.m`](../../matlab/analysis/createSimulationResultSchema.m) — Added `'UNSUPPORTED'` and `'INCOMPLETE'` contract statuses.
+4. [`matlab/analysis/validateSimulationResult.m`](../../matlab/analysis/validateSimulationResult.m) — Enforced non-simulated semantics for `'UNSUPPORTED'` and `'INCOMPLETE'`.
+5. [`matlab/analysis/runDynamicFaultSimulation.m`](../../matlab/analysis/runDynamicFaultSimulation.m) — Added physical model network compatibility checking, explicit fault bus dispatch (Bus A vs Bus B), and dataset measurement verification.
+6. [`matlab/network/traceRadialPath.m`](../../matlab/network/traceRadialPath.m) — Added strict zero-sequence isolation logic for Wye-Wye transformers with ungrounded neutrals.
+7. [`matlab/protection/evaluateEarthFaultProtection.m`](../../matlab/protection/evaluateEarthFaultProtection.m) — Added strict validation for `instPickup_A`, IEC curves, `enabled`, and current vector dimensions.
+8. [`matlab/protection/evaluateNegativeSequenceProtection.m`](../../matlab/protection/evaluateNegativeSequenceProtection.m) — Added strict validation for `mode`, `thermalK`, `definiteDelay_s`, and resolved the $I_1=0, I_2>0$ zero positive-sequence infinite unbalance edge case.
+9. [`matlab/protection/evaluateInstantaneousOvercurrent.m`](../../matlab/protection/evaluateInstantaneousOvercurrent.m) — Enforced scalar boolean `enabled` validation.
+10. [`matlab/analysis/verifyFaultClearing.m`](../../matlab/analysis/verifyFaultClearing.m) — Corrected post-clearing peak measurement window to evaluate once extinction is established ($t \ge tk$).
+11. [`tests/unit/TestDynamicSimulationEntryPoint.m`](../../tests/unit/TestDynamicSimulationEntryPoint.m) — Added regression tests for Bus A fault simulation, unsupported bus rejection, and incompatible network rejection.
+12. [`tests/unit/TestRadialBenchmarkParityRegression.m`](../../tests/unit/TestRadialBenchmarkParityRegression.m) — Added tests for zero-sequence impedance derivation ($0.48\text{ pu}$), ungrounded wye-wye isolation, and delta-wye isolation.
+13. [`tests/unit/TestAnsiProtectionElements.m`](../../tests/unit/TestAnsiProtectionElements.m) — Added 10 regression tests for strict validation errors and $I_1=0$ infinite unbalance.
+14. [`docs/ENGINEERING_VALIDATION_REPORT.md`](../../docs/ENGINEERING_VALIDATION_REPORT.md) — Aligned diagrams and formulas with the authoritative Ynyn0 transformer configuration.
+15. [`docs/TEST_COVERAGE_REPORT.md`](../../docs/TEST_COVERAGE_REPORT.md) — Reconciled CI pipeline description to two-stage sequential execution.
 
 ---
 

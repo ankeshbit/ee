@@ -2,13 +2,15 @@
 
 ## 1. Executive Summary
 
-This repository contains a fully validated, production-grade MATLAB, Simulink, and Simscape Electrical simulation platform for power-system fault analysis, symmetrical-component verification, and protection coordination.
+This repository contains a MATLAB, Simulink, and Simscape Electrical simulation platform for power-system fault analysis, symmetrical-component verification, and protection coordination. An analytical sequence-network engine is cross-checked against a time-domain physical model of a 33/11 kV radial distribution system.
+
+**Requirements:** MATLAB with Simulink, Simscape, and Simscape Electrical for the physical model. The analytical engine and unit tests need MATLAB only (see [docs/setup-guide.md](docs/setup-guide.md)).
 
 The platform couples:
 1. **MATLAB Analytical Engine:** Symmetrical sequence-network calculations for 3PH, SLG, LL, and DLG faults, per-unit base transformations, transformer zero-sequence blocking rules, IEC 60255-151 inverse-time overcurrent curves, and protection selectivity/coordination analysis.
 2. **Simscape Electrical Physical Engine:** Native time-domain dynamic solver (`radial_fault_study_network.slx`) modeling an illustrative 33/11 kV distribution system with source impedance, grounded-wye/grounded-wye transformer leakage inductance, distribution feeder sections, physical circuit breakers, and interactive relay trip logic.
 3. **Single Authoritative Master Configuration:** Single-source configuration ([`matlab/config/getSystemMasterConfiguration.m`](matlab/config/getSystemMasterConfiguration.m)) providing strict parameter parity across analytical solvers, model builders, and validation reports.
-4. **Comprehensive Test Suite:** 243 automated unit and integration tests (242 passed, 1 filtered by license assumption for non-Simscape headless environments), executing cleanly via `scripts/run_all_tests.m`.
+4. **Automated Test Suite:** Unit tests (`tests/unit`) cover the analytical engine and protection logic without Simscape; integration tests (`tests/integration`) exercise the physical model end to end. Simscape-dependent tests are skipped by assumption when the license is unavailable. Run everything with `scripts/run_all_tests.m`; CI runs both stages on every push ([workflow](.github/workflows/tests.yml)).
 
 ---
 
@@ -40,7 +42,7 @@ ee/
 
 ---
 
-## 3. Real Validation Results (Copied from Reference Fault Study)
+## 3. Validation Results
 
 The following tables summarize the real validation metrics generated from [`scripts/run_complete_fault_study.m`](scripts/run_complete_fault_study.m) on MATLAB R2026b:
 
@@ -86,7 +88,7 @@ The following tables summarize the real validation metrics generated from [`scri
 All operations are automated and executable directly from the shell or MATLAB command window:
 
 ```bash
-# 1. Run complete automated regression test suite (243 tests)
+# 1. Run the complete automated regression test suite
 matlab -batch "run('scripts/run_all_tests.m')"
 
 # 2. Rebuild physical Simscape models from source configuration
@@ -99,7 +101,7 @@ matlab -batch "run('scripts/run_complete_fault_study.m')"
 matlab -batch "run('scripts/phase_f_validation_report.m')"
 ```
 
-For detailed options and reproducing reference outputs, see [docs/how-to-reproduce.md](docs/how-to-reproduce.md).
+For detailed options and reproducing reference outputs, see [docs/how-to-reproduce.md](docs/how-to-reproduce.md). Development-history reports (audits, remediation plans, bug-fix logs) are kept in [docs/archive/](docs/archive/).
 
 ---
 

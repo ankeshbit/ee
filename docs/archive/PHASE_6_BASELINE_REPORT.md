@@ -15,7 +15,7 @@
 This report establishes the verified baseline for **Phase 6: Complete Engineering Corrections, Bug Fixes & Independent Validation**. All statements, file inspections, and defect reports documented herein are based on direct inspection of tracked repository files and empirical test suite execution on the clean working tree at commit `8d7b209db1e37d50b91fb8e7c76f1075ea4398ad`.
 
 ### Baseline Test Suite Execution Summary
-- **Test Runner:** [`scripts/run_all_tests.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/scripts/run_all_tests.m)
+- **Test Runner:** [`scripts/run_all_tests.m`](../../scripts/run_all_tests.m)
 - **Total Test Cases:** 350
 - **Passed:** 349
 - **Failed:** 0
@@ -30,7 +30,7 @@ This report establishes the verified baseline for **Phase 6: Complete Engineerin
 The repository is structured into modular analytical calculation packages, physical simulation backends, protection coordination elements, test suites, automation scripts, and engineering documentation.
 
 ```
-c:\Users\ankes\OneDrive\Desktop\ee
+<repository root>
 ├── .github/
 │   └── workflows/
 │       └── tests.yml                     # Two-stage CI workflow (analytical tests & Simulink integration)
@@ -105,7 +105,7 @@ c:\Users\ankes\OneDrive\Desktop\ee
     │   ├── TestFullSystemWorkflow.m
     │   └── TestRelayCoordinationIntegration.m
     └── unit/                             # Symmetrical components, protection elements, contracts
-        ├── TestANSIProtectionElements.m
+        ├── TestAnsiProtectionElements.m
         ├── TestCoordinationMargin.m
         ├── TestDirectionalSupervision.m
         ├── TestFaultSensitivityStudy.m

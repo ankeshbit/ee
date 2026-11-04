@@ -45,7 +45,7 @@ Model saved successfully to simulink/models/radial_fault_study_network.slx
 
 ## 3. Running the Complete Automated Test Suite
 
-To run all 243 automated unit and integration tests across analytical and physical engines with non-zero exit code on failure:
+To run the full automated unit and integration test suite across analytical and physical engines with non-zero exit code on failure:
 
 ```bash
 matlab -batch "run('scripts/run_all_tests.m')"

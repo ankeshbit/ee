@@ -25,9 +25,9 @@ The objective of Phase 6 is to perform a rigorous, evidence-driven remediation a
 
 ### Phase 1: Dynamic Simulation Backend Corrections
 - **Target Files:**
-  - [`matlab/analysis/runDynamicFaultSimulation.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/runDynamicFaultSimulation.m)
-  - [`scripts/build_radial_fault_model.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/scripts/build_radial_fault_model.m)
-  - [`matlab/analysis/runDynamicBreakerSwitchingSimulation.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/analysis/runDynamicBreakerSwitchingSimulation.m)
+  - [`matlab/analysis/runDynamicFaultSimulation.m`](../../matlab/analysis/runDynamicFaultSimulation.m)
+  - [`scripts/build_radial_fault_model.m`](../../scripts/build_radial_fault_model.m)
+  - [`matlab/analysis/runDynamicBreakerSwitchingSimulation.m`](../../matlab/analysis/runDynamicBreakerSwitchingSimulation.m)
 - **Remediation Actions:**
   1. **Dual-Location Fault Support:** In `scripts/build_radial_fault_model.m`, instantiate both `Fault_BusB` and `Fault_BusA`. Connect `Fault_BusA` to the 11 kV Bus A terminal. By default, both fault blocks are disabled (fault start time = 999.0 s).
   2. **Scenario Fault-Location Dispatch:** In `runDynamicFaultSimulation.m`:
@@ -47,11 +47,11 @@ The objective of Phase 6 is to perform a rigorous, evidence-driven remediation a
 
 ### Phase 2: Transformer Topology & Zero-Sequence Network Corrections
 - **Target Files:**
-  - [`matlab/network/traceRadialPath.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/network/traceRadialPath.m)
-  - [`matlab/config/getSystemMasterConfiguration.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/config/getSystemMasterConfiguration.m)
-  - [`matlab/network/createIllustrativeTransformerRadialNetwork.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/network/createIllustrativeTransformerRadialNetwork.m)
-  - [`docs/ENGINEERING_VALIDATION_REPORT.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/ENGINEERING_VALIDATION_REPORT.md)
-  - [`docs/assumptions.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/assumptions.md)
+  - [`matlab/network/traceRadialPath.m`](../../matlab/network/traceRadialPath.m)
+  - [`matlab/config/getSystemMasterConfiguration.m`](../../matlab/config/getSystemMasterConfiguration.m)
+  - [`matlab/network/createIllustrativeTransformerRadialNetwork.m`](../../matlab/network/createIllustrativeTransformerRadialNetwork.m)
+  - [`docs/ENGINEERING_VALIDATION_REPORT.md`](../../docs/ENGINEERING_VALIDATION_REPORT.md)
+  - [`docs/assumptions.md`](../../docs/assumptions.md)
 - **Remediation Actions:**
   1. **Authoritative Configuration:** Establish **Ynyn0** (grounded-wye / grounded-wye, solidly grounded neutrals, 0° phase displacement) as the single authoritative transformer configuration.
   2. **Zero-Sequence Path Derivation:**
@@ -65,9 +65,9 @@ The objective of Phase 6 is to perform a rigorous, evidence-driven remediation a
 
 ### Phase 3: ANSI Protection Module Corrections
 - **Target Files:**
-  - [`matlab/protection/evaluateEarthFaultProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateEarthFaultProtection.m)
-  - [`matlab/protection/evaluateNegativeSequenceProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateNegativeSequenceProtection.m)
-  - [`matlab/protection/evaluateInstantaneousOvercurrent.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateInstantaneousOvercurrent.m)
+  - [`matlab/protection/evaluateEarthFaultProtection.m`](../../matlab/protection/evaluateEarthFaultProtection.m)
+  - [`matlab/protection/evaluateNegativeSequenceProtection.m`](../../matlab/protection/evaluateNegativeSequenceProtection.m)
+  - [`matlab/protection/evaluateInstantaneousOvercurrent.m`](../../matlab/protection/evaluateInstantaneousOvercurrent.m)
 - **Remediation Actions:**
   1. **ANSI 50N/51N (Earth-Fault Protection):**
      - Validate `settings.enabled` as scalar logical.
@@ -86,11 +86,11 @@ The objective of Phase 6 is to perform a rigorous, evidence-driven remediation a
 
 ### Phase 4: Analytical Engine & Network Validation
 - **Target Files:**
-  - [`matlab/faults/calculateThreePhaseFault.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/faults/calculateThreePhaseFault.m)
-  - [`matlab/faults/calculateSLGFault.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/faults/calculateSLGFault.m)
-  - [`matlab/faults/calculateLLFault.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/faults/calculateLLFault.m)
-  - [`matlab/faults/calculateDLGFault.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/faults/calculateDLGFault.m)
-  - [`matlab/network/validateRadialNetwork.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/network/validateRadialNetwork.m)
+  - [`matlab/faults/calculateThreePhaseFault.m`](../../matlab/faults/calculateThreePhaseFault.m)
+  - [`matlab/faults/calculateSLGFault.m`](../../matlab/faults/calculateSLGFault.m)
+  - [`matlab/faults/calculateLLFault.m`](../../matlab/faults/calculateLLFault.m)
+  - [`matlab/faults/calculateDLGFault.m`](../../matlab/faults/calculateDLGFault.m)
+  - [`matlab/network/validateRadialNetwork.m`](../../matlab/network/validateRadialNetwork.m)
 - **Remediation Actions:**
   1. Verify base value conversions and per-unit calculations across all fault types.
   2. Verify that radial path tracing correctly isolates upstream Thevenin impedance without including downstream shunt branches or lateral spurs.
@@ -100,9 +100,9 @@ The objective of Phase 6 is to perform a rigorous, evidence-driven remediation a
 
 ### Phase 5: CI & Workflow Alignment
 - **Target Files:**
-  - [`.github/workflows/tests.yml`](file:///c:/Users/ankes/OneDrive/Desktop/ee/.github/workflows/tests.yml)
-  - [`docs/TEST_COVERAGE_REPORT.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/TEST_COVERAGE_REPORT.md)
-  - [`docs/ENGINEERING_VALIDATION_REPORT.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/ENGINEERING_VALIDATION_REPORT.md)
+  - [`.github/workflows/tests.yml`](../../.github/workflows/tests.yml)
+  - [`docs/TEST_COVERAGE_REPORT.md`](../../docs/TEST_COVERAGE_REPORT.md)
+  - [`docs/ENGINEERING_VALIDATION_REPORT.md`](../../docs/ENGINEERING_VALIDATION_REPORT.md)
 - **Remediation Actions:**
   1. Verify `.github/workflows/tests.yml` maintains strict separation between analytical test suite (runs on every PR/push) and Simulink integration tests (conditionally checks licensing).
   2. Reconcile documentation to accurately reflect the workflow job dependency (`needs: analytical-unit-tests`).
@@ -111,11 +111,11 @@ The objective of Phase 6 is to perform a rigorous, evidence-driven remediation a
 
 ### Phase 6: Test Suite Expansion & Regression Testing
 - **Target Files:**
-  - [`tests/unit/TestDynamicSimulationEntryPoint.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestDynamicSimulationEntryPoint.m)
-  - [`tests/unit/TestANSIProtectionElements.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestANSIProtectionElements.m)
-  - [`tests/unit/TestNegativeSequenceProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestNegativeSequenceProtection.m)
-  - [`tests/unit/TestRadialPathTracing.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestRadialPathTracing.m)
-  - [`tests/unit/TestSequenceFaults.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestSequenceFaults.m)
+  - [`tests/unit/TestDynamicSimulationEntryPoint.m`](../../tests/unit/TestDynamicSimulationEntryPoint.m)
+  - [`tests/unit/TestAnsiProtectionElements.m`](../../tests/unit/TestAnsiProtectionElements.m)
+  - `tests/unit/TestNegativeSequenceProtection.m` (planned)
+  - `tests/unit/TestRadialPathTracing.m` (planned)
+  - `tests/unit/TestSequenceFaults.m` (planned)
 - **Remediation Actions:**
   1. Add tests for Bus A fault simulation dispatch, Bus B dispatch, and unsupported bus rejection.
   2. Add tests for ungrounded wye-wye transformer zero-sequence isolation.
@@ -127,11 +127,11 @@ The objective of Phase 6 is to perform a rigorous, evidence-driven remediation a
 
 ### Phase 7: Engineering Documentation Corrections
 - **Target Files:**
-  - [`README.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/README.md)
-  - [`docs/ENGINEERING_VALIDATION_REPORT.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/ENGINEERING_VALIDATION_REPORT.md)
-  - [`docs/assumptions.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/assumptions.md)
-  - [`docs/simulation-model-specification.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/simulation-model-specification.md)
-  - [`docs/KNOWN_LIMITATIONS.md`](file:///c:/Users/ankes/OneDrive/Desktop/ee/docs/KNOWN_LIMITATIONS.md)
+  - [`README.md`](../../README.md)
+  - [`docs/ENGINEERING_VALIDATION_REPORT.md`](../../docs/ENGINEERING_VALIDATION_REPORT.md)
+  - [`docs/assumptions.md`](../../docs/assumptions.md)
+  - [`docs/simulation-model-specification.md`](../../docs/simulation-model-specification.md)
+  - [`docs/KNOWN_LIMITATIONS.md`](../../docs/KNOWN_LIMITATIONS.md)
 - **Remediation Actions:**
   1. Replace any remaining references claiming "Dyn11" in the baseline model with the authoritative "Ynyn0".
   2. Document exact zero-sequence derivation with source impedance included ($0.10 + 0.08 + 0.15 + 0.15 = 0.480\text{ pu}$).

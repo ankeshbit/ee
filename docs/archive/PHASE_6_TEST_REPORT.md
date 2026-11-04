@@ -15,7 +15,7 @@
 
 ## 1. Executive Summary
 
-The complete automated test suite was executed using the authoritative test runner [`scripts/run_all_tests.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/scripts/run_all_tests.m).
+The complete automated test suite was executed using the authoritative test runner [`scripts/run_all_tests.m`](../../scripts/run_all_tests.m).
 
 ```
 =================================================================

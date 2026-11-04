@@ -23,15 +23,15 @@ Nine dedicated regression test classes were authored to directly address the 8 c
 
 | Test Suite File | Tests | Focus Area | Status |
 | :--- | :---: | :--- | :---: |
-| [`TestAcceptanceValidationRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestAcceptanceValidationRegression.m) | 8 | Empty outcome arrays, blocked simulations, incomplete runs, mandatory scenario checks | **ALL PASS** (8/8) |
-| [`TestMeasurementWindowValidationRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestMeasurementWindowValidationRegression.m) | 10 | Transient window fallback elimination, 50/60 Hz, non-monotonic time, sub-cycle data | **ALL PASS** (10/10) |
-| [`TestCompareAnalyticalAndSimulationRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestCompareAnalyticalAndSimulationRegression.m) | 11 | NaN/Inf input rejection, base compatibility, complex phasor norms, negative tolerances | **ALL PASS** (11/11) |
-| [`TestVerifyFaultClearingRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestVerifyFaultClearingRegression.m) | 7 | Sliding one-cycle RMS across 3 phases, extinction persistence, early simulation end | **ALL PASS** (7/7) |
-| [`TestSimulationResultValidationRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestSimulationResultValidationRegression.m) | 8 | Result schema contract, dimension matching, non-finite rejection, anti-fabrication | **ALL PASS** (8/8) |
-| [`TestBreakerSwitchingExtractionRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestBreakerSwitchingExtractionRegression.m) | 3 | Missing mandatory ports rejection, discrete ZOH interpolation, non-finite signals | **ALL PASS** (3/3) |
-| [`TestRadialBenchmarkParityRegression.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestRadialBenchmarkParityRegression.m) | 7 | 33/11 kV transformer network integration, 10 MVA base, 3PH/SLG/LL/DLG benchmarks | **ALL PASS** (7/7) |
-| [`TestAnsiProtectionElements.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestAnsiProtectionElements.m) | 9 | ANSI 50 (Instantaneous OC), ANSI 50N/51N (Earth Fault), ANSI 46 (Negative Sequence) | **ALL PASS** (9/9) |
-| [`TestDynamicFaultSimulationBackend.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/tests/unit/TestDynamicFaultSimulationBackend.m) | 3 | Physical model compilation, blocked license handling, waveform extraction | **ALL PASS** (3/3) |
+| [`TestAcceptanceValidationRegression.m`](../tests/unit/TestAcceptanceValidationRegression.m) | 8 | Empty outcome arrays, blocked simulations, incomplete runs, mandatory scenario checks | **ALL PASS** (8/8) |
+| [`TestMeasurementWindowValidationRegression.m`](../tests/unit/TestMeasurementWindowValidationRegression.m) | 10 | Transient window fallback elimination, 50/60 Hz, non-monotonic time, sub-cycle data | **ALL PASS** (10/10) |
+| [`TestCompareAnalyticalAndSimulationRegression.m`](../tests/unit/TestCompareAnalyticalAndSimulationRegression.m) | 11 | NaN/Inf input rejection, base compatibility, complex phasor norms, negative tolerances | **ALL PASS** (11/11) |
+| [`TestVerifyFaultClearingRegression.m`](../tests/unit/TestVerifyFaultClearingRegression.m) | 7 | Sliding one-cycle RMS across 3 phases, extinction persistence, early simulation end | **ALL PASS** (7/7) |
+| [`TestSimulationResultValidationRegression.m`](../tests/unit/TestSimulationResultValidationRegression.m) | 8 | Result schema contract, dimension matching, non-finite rejection, anti-fabrication | **ALL PASS** (8/8) |
+| [`TestBreakerSwitchingExtractionRegression.m`](../tests/unit/TestBreakerSwitchingExtractionRegression.m) | 3 | Missing mandatory ports rejection, discrete ZOH interpolation, non-finite signals | **ALL PASS** (3/3) |
+| [`TestRadialBenchmarkParityRegression.m`](../tests/unit/TestRadialBenchmarkParityRegression.m) | 7 | 33/11 kV transformer network integration, 10 MVA base, 3PH/SLG/LL/DLG benchmarks | **ALL PASS** (7/7) |
+| [`TestAnsiProtectionElements.m`](../tests/unit/TestAnsiProtectionElements.m) | 9 | ANSI 50 (Instantaneous OC), ANSI 50N/51N (Earth Fault), ANSI 46 (Negative Sequence) | **ALL PASS** (9/9) |
+| [`TestDynamicFaultSimulationBackend.m`](../tests/unit/TestDynamicFaultSimulationBackend.m) | 3 | Physical model compilation, blocked license handling, waveform extraction | **ALL PASS** (3/3) |
 | **Total Regression Tests** | **66** | **Exhaustive coverage of Bugs 2.1 through 2.8 and Phase 3 & 4** | **ALL PASS (66/66)** |
 
 ---
@@ -104,7 +104,7 @@ The repository test suite consists of 37 test classes spanning unit, integration
 
 ## 5. Continuous Integration (GitHub Actions)
 
-Workflow [`.github/workflows/tests.yml`](file:///c:/Users/ankes/.github/workflows/tests.yml) is structured as a two-stage sequential pipeline (`needs: analytical-unit-tests`):
+Workflow [`.github/workflows/tests.yml`](../.github/workflows/tests.yml) is structured as a two-stage sequential pipeline (`needs: analytical-unit-tests`):
 1. `analytical-unit-tests`: Runs on standard GitHub-hosted runner executing the 29 unit test classes (all matrix math, sequence transforms, ANSI elements, and regression suites) without requiring paid toolbox licenses.
 2. `simulink-integration-tests`: Executes dynamic Simulink and Simscape simulations on runners equipped with MATLAB licenses, archiving test results and code coverage XML artifacts.
 

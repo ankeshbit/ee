@@ -143,17 +143,17 @@ $$t_{\text{op}} = \text{TMS} \times \frac{0.14}{M^{0.02} - 1}, \quad M = \frac{I
 
 ### 4.2 Instantaneous Overcurrent Protection (ANSI 50)
 - Pickup: $8.0 \times I_{\text{nominal}} = 3200\text{ A}$ (configured beyond maximum close-in fault of downstream feeder).
-- Operation: Evaluated via [`evaluateInstantaneousOvercurrent.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateInstantaneousOvercurrent.m). If $I_{\text{phase}} \ge I_{\text{inst}}$, trips within breaker intent delay ($t_{\text{op}} = 0.020\text{ s}$).
+- Operation: Evaluated via [`evaluateInstantaneousOvercurrent.m`](../matlab/protection/evaluateInstantaneousOvercurrent.m). If $I_{\text{phase}} \ge I_{\text{inst}}$, trips within breaker intent delay ($t_{\text{op}} = 0.020\text{ s}$).
 
 ### 4.3 Earth Fault Protection (ANSI 50N / 51N)
 - Senses residual / zero-sequence current: $I_{\text{residual}} = I_a + I_b + I_c = 3 I_0$.
-- Implemented in [`evaluateEarthFaultProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateEarthFaultProtection.m).
+- Implemented in [`evaluateEarthFaultProtection.m`](../matlab/protection/evaluateEarthFaultProtection.m).
 - Balanced 3PH fault produces $I_{\text{residual}} = 0\text{ A}$ (No trip).
 - SLG fault produces $I_{\text{residual}} = 1514.03\text{ A}$ (Trips promptly within definite or inverse time curve).
 
 ### 4.4 Negative-Sequence Overcurrent Protection (ANSI 46)
 - Senses negative-sequence unbalance: $I_2 = \frac{1}{3}(I_a + a^2 I_b + a I_c)$.
-- Implemented in [`evaluateNegativeSequenceProtection.m`](file:///c:/Users/ankes/OneDrive/Desktop/ee/matlab/protection/evaluateNegativeSequenceProtection.m).
+- Implemented in [`evaluateNegativeSequenceProtection.m`](../matlab/protection/evaluateNegativeSequenceProtection.m).
 - Protects generators and motors against rotor heating caused by unbalanced faults (SLG, LL, DLG) or open-phase conditions.
 - Balanced 3PH fault: $I_2 \approx 0\text{ A}$, unbalance ratio $\approx 0\%$ (No trip).
 - LL fault: $I_2 = 1.7857\text{ pu} = 937.2\text{ A}$, unbalance ratio $= 100\%$ (Trips with thermal inverse or definite delay).
