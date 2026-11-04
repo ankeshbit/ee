@@ -37,6 +37,24 @@ Dynamic model execution is governed by a license-aware entry point:
 - Detailed model parameters, block inventory, and wiring topology are documented in
   `docs/simulation-model-specification.md`.
 
+### Programmatically Built Model Architecture
+
+Both models are programmatically constructed with deterministic grid positioning, labeled Area grouping boxes, and left-to-right single-line diagram flow:
+
+#### 1. 33/11 kV Radial Fault Study Network (`radial_fault_study_network.slx`)
+![33/11 kV Radial Fault Study Network](images/radial_fault_model.png)
+
+#### 2. Dynamic Relay Protection Subsystems (IEC 60255-151)
+- **Primary Feeder Relay (`RELAY_BUS_B`):**
+  ![Relay Bus B Subsystem](images/relay_bus_b_subsystem.png)
+- **Backup Feeder Relay (`RELAY_BUS_A`):**
+  ![Relay Bus A Subsystem](images/relay_bus_a_subsystem.png)
+- **Remote Backup Incomer Relay (`RELAY_33KV`):**
+  ![Relay 33kV Subsystem](images/relay_33kv_subsystem.png)
+
+#### 3. Minimal Circuit Prototype (`minimal_circuit_prototype.slx`)
+![Minimal Circuit Prototype](images/minimal_circuit_prototype.png)
+
 ## Interface Between Engines
 
 The analytical-to-simulation interface is governed by strict configuration, schema,
