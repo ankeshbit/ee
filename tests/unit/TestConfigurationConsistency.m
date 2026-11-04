@@ -137,8 +137,14 @@ classdef TestConfigurationConsistency < matlab.unittest.TestCase
 
             % 4. Relay B Pickup and CT Ratio
             relayB = cfg.relays(strcmp({cfg.relays.id}, 'RELAY_BUS_B'));
-            ctGainB = str2double(get_param([modelName, '/Gain_M_B'], 'Gain'));
-            pickupB = str2double(get_param([modelName, '/Check_Pickup_B'], 'const'));
+            hGain = find_system(modelName, 'LookUnderMasks', 'all', 'Name', 'Gain_M_B');
+            testCase.verifyNotEmpty(hGain, 'Block Gain_M_B must exist in model');
+            ctGainB = str2double(get_param(hGain{1}, 'Gain'));
+
+            hPickup = find_system(modelName, 'LookUnderMasks', 'all', 'Name', 'Check_Pickup_B');
+            testCase.verifyNotEmpty(hPickup, 'Block Check_Pickup_B must exist in model');
+            pickupB = str2double(get_param(hPickup{1}, 'const'));
+
             expectedGainB = relayB.CTsecondary_A.value / relayB.CTprimary_A.value;
             testCase.verifyEqual(ctGainB, expectedGainB, 'AbsTol', 1e-6, ...
                 'Model CT B ratio must match master config');
